@@ -17,7 +17,7 @@ labels = []
 
 nb_classes = len(folder_names)
 
-size_class = 12
+size_class = 1200
 
 with open("class_1200.txt", mode="w") as fclass:
     fclass.write("id,class_name,nb_images\n")

@@ -433,11 +433,11 @@ class vgg16:
 
 
 if __name__ == '__main__':
-    # num_train_step = 1600  # roughly 10 epoch
-    num_train_step = 2  # test purpose
+    num_train_step = 3200  # roughly 20 epoch
+    # num_train_step = 2  # test purpose
     print_val_size = 10
-    save_param_size = 80
-    batch_size = 128
+    save_param_size = 160
+    batch_size = 64
     continue_training = False
 
     learning_rate = 0.00002
