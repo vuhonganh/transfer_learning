@@ -11,6 +11,9 @@ from data_reader import get_data, get_data_stratify
 import os
 import sys
 
+classes = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
+           "banana", "key", "mug", "pear", "orange"]
+
 
 class vgg16:
     def __init__(self, weights=None, sess=None, learning_rate=0.01, fc_lay_weights=None):
@@ -435,11 +438,21 @@ class vgg16:
 
 
 if __name__ == '__main__':
-    num_train_step = 3200  # roughly 20 epoch
+    print("Enter batch size: ", end='')
+    batch_size = 64
+    try:
+        batch_size = int(input())
+    except Exception as e:
+        print("Got error: ", e)
+        print("use default batch size = 64")
+
+    num_train_step = int(14400 / batch_size * 20)
+    # num_train_step = 3200  # roughly 20 epoch
+
     # num_train_step = 2  # test purpose
     print_val_size = 10
-    save_param_size = 160
-    batch_size = 64
+    save_param_size = int(num_train_step / 2)
+
     continue_training = False
 
     learning_rate = 0.00002
@@ -523,6 +536,7 @@ if __name__ == '__main__':
         cnt = 0
 
         assignments = np.zeros((12, 12), dtype=np.float32)
+        idx_guess_wrong = []
 
         while cur_test_id < length_test:
             idx_test_batch = test_idx[cur_test_id: cur_test_id + batch_size]
@@ -541,6 +555,8 @@ if __name__ == '__main__':
 
                 if correct_idx == guess_idx:
                     cnt += 1
+                else:
+                    idx_guess_wrong.append(id_test)
 
             percentage = min(cur_test_id / length_test, 1.0)
             progress = '{0:.0%}'.format(percentage)
@@ -552,4 +568,6 @@ if __name__ == '__main__':
         print("saving assignments table...")
         np.save("assignments_table", assignments, allow_pickle=False)
         print("assignments table is saved!")
-
+        print("saving idx that guess wrongly...")
+        np.save("idx_guess_wrong", np.asarray(idx_guess_wrong), allow_pickle=False)
+        print("idx that guess wrongly are saved")
