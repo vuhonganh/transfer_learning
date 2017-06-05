@@ -17,9 +17,11 @@ labels = []
 
 nb_classes = len(folder_names)
 
-with open("class.txt", mode="w") as fclass:
+size_class = 12
+
+with open("class_1200.txt", mode="w") as fclass:
     fclass.write("id,class_name,nb_images\n")
-    with open("signature.txt", mode="w") as f:
+    with open("signature_1200.txt", mode="w") as f:
         f.write("im_name,id_class,raw_name\n")
         for id_class in range(len(folder_names)):
             n_per_class = 0
@@ -41,9 +43,11 @@ with open("class.txt", mode="w") as fclass:
                         print("%s does not have 3 channels" % file_name)
                 except Exception as e:
                     print("Failed to read file %s: got %s" % (file_name, e))
+                if n_per_class == size_class:
+                    break
             fclass.write("%d,%s,%d\n" % (id_class, folder_names[id_class], n_per_class))
 
 images = np.asarray(images)
 labels = np.asarray(labels)
 
-np.savez("mydata.npz", images=images, labels=labels)
+np.savez("mydata_1200.npz", images=images, labels=labels)

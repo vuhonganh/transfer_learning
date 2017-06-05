@@ -433,12 +433,14 @@ class vgg16:
 
 
 if __name__ == '__main__':
-    num_train_step = 1560  # roughly 10 epoch
+    num_train_step = 1600  # roughly 10 epoch
     # num_train_step = 2  # test purpose
     print_val_size = 10
-    save_param_size = 156
-    batch_size = 64
-    learning_rate = 0.00001
+    save_param_size = 80
+    batch_size = 128
+    continue_training = False
+
+    learning_rate = 0.00002
 
     images, labels, train_idx, val_idx, test_idx = get_data()
     length_train = len(train_idx)
@@ -448,8 +450,10 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        #vgg = vgg16('vgg16_weights.npz', sess, learning_rate)
-        vgg = vgg16('vgg16_weights.npz', sess, learning_rate, 'fc_lay.npz')
+        if continue_training:
+            vgg = vgg16('vgg16_weights.npz', sess, learning_rate, 'fc_lay.npz')
+        else:
+            vgg = vgg16('vgg16_weights.npz', sess, learning_rate)
 
         # saver = tf.train.Saver(vgg.fc_parameters)
 

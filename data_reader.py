@@ -1,17 +1,18 @@
 import numpy as np
 import csv
-
+from matplotlib import pyplot as plt
+from sklearn.model_selection import StratifiedShuffleSplit
 # class_file = "class.txt"
 # class_reader = csv.reader(open(class_file))
 # for row in class_reader:
 #     print(row[2])
 
 
-def get_data():
+def get_data(file_name="mydata_1200.npz"):
 
     np.random.seed(1234)  # VERY IMPORTANT (for running multiple times)
 
-    file = np.load("mydata.npz")
+    file = np.load(file_name)
     images = file['images']
     labels = file['labels']
 
@@ -22,16 +23,34 @@ def get_data():
 
     indices = np.random.permutation(length)
 
-    len_train_val = int(0.8 * length)
+    len_train_val = int(0.7 * length)
 
     train_val_idx = indices[:len_train_val]
     test_idx = indices[len_train_val:]
-
     len_train = int(0.8 * len_train_val)
     train_idx = train_val_idx[:len_train]
     val_idx = train_val_idx[len_train:]
     return images, labels, train_idx, val_idx, test_idx
 
+
+def get_data_stratify(file_name="mydata_1200.npz"):
+    # define spliter
+    sss = StratifiedShuffleSplit(test_size=0.3, random_state=1234, n_splits=1)
+
+    # load data
+    file = np.load(file_name)
+    images = file['images']
+    labels = file['labels']
+    train_idx, test_idx = None, None
+    for tr, te in sss.split(images, labels):
+        train_idx = tr
+        test_idx = te
+
+    length_train = int(0.8 * len(train_idx))
+    val_idx = train_idx[length_train:]
+    train_idx = train_idx[:length_train]
+
+    return images, labels, train_idx, val_idx, test_idx
 
 def get_fc_layers():
     weight_file = "fc_lay.npz"
@@ -46,5 +65,23 @@ def get_fc_layers():
     # print(w1[0])
 
 
+
 if __name__ == "__main__":
-    get_fc_layers()
+    # get_fc_layers()
+    images, labels, train_idx, val_idx, test_idx = get_data("mydata_1200.npz")
+    # images, labels, train_idx, val_idx, test_idx = get_data_stratify("mydata_1200.npz")
+    integer_labels_test = np.argmax(labels[test_idx], axis=1)
+    integer_labels_train = np.argmax(labels[train_idx], axis=1)
+    integer_labels_val = np.argmax(labels[val_idx], axis=1)
+    integer_labels = np.argmax(labels, axis=1)
+    # plt.hist(integer_labels, bins=12)
+    # plt.hist(integer_labels_test, bins=12)
+    plt.hist(integer_labels_train[64:128], bins=12)
+    plt.hist(integer_labels_train[0:64], bins=12)
+    plt.hist(integer_labels_train[128:192], bins=12)
+    # plt.hist(integer_labels_val, bins=12)
+    plt.show()
+
+
+
+
