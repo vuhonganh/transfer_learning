@@ -35,6 +35,7 @@ def get_data(file_name="mydata_1200.npz"):
 
 def get_data_stratify(file_name="mydata_1200.npz"):
     # define spliter
+    print("Read data from %s \n" % file_name)
     sss = StratifiedShuffleSplit(test_size=0.3, random_state=1234, n_splits=1)
 
     # load data
