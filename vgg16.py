@@ -7,7 +7,7 @@
 
 import tensorflow as tf
 import numpy as np
-from data_reader import get_data
+from data_reader import get_data, get_data_stratify
 import os
 import sys
 
@@ -433,8 +433,8 @@ class vgg16:
 
 
 if __name__ == '__main__':
-    num_train_step = 1600  # roughly 10 epoch
-    # num_train_step = 2  # test purpose
+    # num_train_step = 1600  # roughly 10 epoch
+    num_train_step = 2  # test purpose
     print_val_size = 10
     save_param_size = 80
     batch_size = 128
@@ -442,10 +442,12 @@ if __name__ == '__main__':
 
     learning_rate = 0.00002
 
-    images, labels, train_idx, val_idx, test_idx = get_data()
+    # images, labels, train_idx, val_idx, test_idx = get_data()
+    images, labels, train_idx, val_idx, test_idx = get_data_stratify()
     length_train = len(train_idx)
     length_val = len(val_idx)
     length_test = len(test_idx)
+
     checkpoint_dir = './.checkpoints/'
 
     with tf.Session() as sess:
@@ -518,6 +520,8 @@ if __name__ == '__main__':
         cur_test_id = 0
         cnt = 0
 
+        assignments = np.zeros((12, 12), dtype=np.float32)
+
         while cur_test_id < length_test:
             idx_test_batch = test_idx[cur_test_id: cur_test_id + batch_size]
             cur_test_id += batch_size
@@ -528,11 +532,22 @@ if __name__ == '__main__':
             for id_test in range(len(test_labels)):
                 correct_idx = np.argmax(test_labels[id_test])
                 guess_idx = np.argmax(test_probs[id_test])
+
+                # table that shows which one is mapped to which one
+                # correct idx is presented vertically on the left side
+                assignments[correct_idx, guess_idx] += 1.0
+
                 if correct_idx == guess_idx:
                     cnt += 1
+
             percentage = min(cur_test_id / length_test, 1.0)
             progress = '{0:.0%}'.format(percentage)
             print("progress done %s" % progress)
 
         print("test accuracy is %f" % (cnt / length_test))
+
+        assignments = np.around(assignments / np.sum(assignments, axis=1)[:, None], 2)
+        print("saving assignments table...")
+        np.save("assignments_table", assignments, allow_pickle=False)
+        print("assignments table is saved!")
 
