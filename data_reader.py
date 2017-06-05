@@ -46,6 +46,7 @@ def get_data_stratify(file_name="mydata_1200.npz"):
     for tr, te in sss.split(images, labels):
         train_idx = tr
         test_idx = te
+    # print(test_idx)
 
     length_train = int(0.8 * len(train_idx))
     val_idx = train_idx[length_train:]
@@ -69,8 +70,8 @@ def get_fc_layers():
 
 if __name__ == "__main__":
     # get_fc_layers()
-    images, labels, train_idx, val_idx, test_idx = get_data("mydata_1200.npz")
-    # images, labels, train_idx, val_idx, test_idx = get_data_stratify("mydata_1200.npz")
+    # images, labels, train_idx, val_idx, test_idx = get_data("mydata_1200.npz")
+    images, labels, train_idx, val_idx, test_idx = get_data_stratify("mydata_1200.npz")
     integer_labels_test = np.argmax(labels[test_idx], axis=1)
     integer_labels_train = np.argmax(labels[train_idx], axis=1)
     integer_labels_val = np.argmax(labels[val_idx], axis=1)

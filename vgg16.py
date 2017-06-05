@@ -468,7 +468,7 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         if continue_training:
-            vgg = vgg16('vgg16_weights.npz', sess, learning_rate, 'fc_lay.npz')
+            vgg = vgg16('vgg16_weights.npz', sess, learning_rate, 'fc_lay_20epoch.npz')
         else:
             vgg = vgg16('vgg16_weights.npz', sess, learning_rate)
 
@@ -540,7 +540,7 @@ if __name__ == '__main__':
 
         while cur_test_id < length_test:
             idx_test_batch = test_idx[cur_test_id: cur_test_id + batch_size]
-            cur_test_id += batch_size
+
             test_images = images[idx_test_batch]
             test_labels = labels[idx_test_batch]
             test_feed = vgg.create_feed_dict(input_batch=test_images)
@@ -556,8 +556,9 @@ if __name__ == '__main__':
                 if correct_idx == guess_idx:
                     cnt += 1
                 else:
-                    idx_guess_wrong.append(id_test)
+                    idx_guess_wrong.append(test_idx[cur_test_id + id_test])
 
+            cur_test_id += batch_size
             percentage = min(cur_test_id / length_test, 1.0)
             progress = '{0:.0%}'.format(percentage)
             print("progress done %s" % progress)
