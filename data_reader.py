@@ -8,6 +8,9 @@ import csv
 
 
 def get_data():
+
+    np.random.seed(1234)  # VERY IMPORTANT (for running multiple times)
+
     file = np.load("mydata.npz")
     images = file['images']
     labels = file['labels']
