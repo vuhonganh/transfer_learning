@@ -14,9 +14,11 @@ import sys
 
 class vgg16:
     def __init__(self, weights=None, sess=None, learning_rate=0.01, fc_lay_weights=None):
-        self.learning_rate = learning_rate
         self.fc3l = None
         self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
+        self.learning_rate = tf.train.exponential_decay(learning_rate,
+                                                        self.global_step,
+                                                        800, 0.6, staircase=True)
         self.fc_parameters = []
         self._create_placeholder()
         self.convlayers()
