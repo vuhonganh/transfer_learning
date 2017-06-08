@@ -314,7 +314,7 @@ class vgg16:
                                ksize=[1, 2, 2, 1],
                                strides=[1, 2, 2, 1],
                                padding='SAME',
-                               name='pool4')
+                               name='pool5')
 
     def fc_layers(self):
         # fc1
