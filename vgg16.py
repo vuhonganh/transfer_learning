@@ -22,7 +22,8 @@ class vgg16:
         self.learning_rate = tf.train.exponential_decay(learning_rate,
                                                         self.global_step,
                                                         800, 0.6, staircase=True)
-        self.fc_parameters = []
+        self.fc_parameters = []  # fully-connected parameters
+        self.parameters = []  # conv parameters
         self._create_placeholder()
         self.convlayers()
         self.fc_layers_transfer()
@@ -54,7 +55,7 @@ class vgg16:
 
 
     def convlayers(self):
-        self.parameters = []
+        #self.parameters = []
 
         # zero-mean input
         with tf.name_scope('preprocess') as scope:
@@ -437,6 +438,27 @@ class vgg16:
             sess.run(self.fc_parameters[i].assign(weights[k]))
 
 
+def save_cur_weights():
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        vgg = vgg16('vgg16_weights.npz', sess, 1e-5, 'fc_lay_20epoch.npz')
+        fc_layers = sess.run(fetches=vgg.fc_parameters)
+        conv_layers = sess.run(fetches=vgg.parameters)
+        print("start saving...")
+        np.savez("myweights.npz", conv_layers[0], conv_layers[1],
+                 conv_layers[2], conv_layers[3], conv_layers[4],
+                 conv_layers[5], conv_layers[6], conv_layers[7],  # conv 1 and conv 2 done
+                 conv_layers[8], conv_layers[9], conv_layers[10],
+                 conv_layers[11], conv_layers[12], conv_layers[13],  # conv 3 done
+                 conv_layers[14], conv_layers[15], conv_layers[16],
+                 conv_layers[17], conv_layers[18], conv_layers[19],  # conv 4 done
+                 conv_layers[20], conv_layers[21], conv_layers[22],
+                 conv_layers[23], conv_layers[24], conv_layers[25],  # conv 5 done
+                 fc_layers[0], fc_layers[1], fc_layers[2],
+                 fc_layers[3], fc_layers[4], fc_layers[5])
+        print("done saving!")
+
+
 if __name__ == '__main__':
     print("Enter batch size: ", end='')
     batch_size = 64
@@ -463,7 +485,7 @@ if __name__ == '__main__':
     length_val = len(val_idx)
     length_test = len(test_idx)
 
-    checkpoint_dir = './.checkpoints/'
+    #checkpoint_dir = './.checkpoints/'
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -572,3 +594,5 @@ if __name__ == '__main__':
         print("saving idx that guess wrongly...")
         np.save("idx_guess_wrong", np.asarray(idx_guess_wrong), allow_pickle=False)
         print("idx that guess wrongly are saved")
+
+
