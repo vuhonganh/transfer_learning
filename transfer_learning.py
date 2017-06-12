@@ -35,10 +35,10 @@ else:
 
 def vgg16_model():
 
-    model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
     print('model vgg16 loaded without top')
     fc_model = Sequential()
-    fc_model.add(Flatten(input_shape=model.output_shape[1:]))
+    fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
     fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
@@ -47,7 +47,7 @@ def vgg16_model():
     fc_model.add(Activation('softmax'))
     fc_model.load_weights('bottleneck_fc_model.h5')
 
-    model.add(fc_model)
+    model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
 
     for layer in model.layers[:25]:
         layer.trainable = False
