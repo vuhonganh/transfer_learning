@@ -102,16 +102,21 @@ def vgg16_model(nb_epoch=1):
     np.save('predictions.npy', predictions)
     test_label = [i // NB_TEST_PER_CLASS for i in range(nb_test_samples)]
     cnt = 0
+    cnt_top_3 = 0
     for i in range(predictions.shape[0]):
-        print("current item %d: " % i)
+        print("\ncurrent item %d: " % i)
         print("expect class %s" % classes[test_label[i]])
         preds = (np.argsort(predictions[i])[::-1])[0:3]
         for p in preds:
             print(classes[p], predictions[i][p])
+            if p == test_label[i]:
+                cnt_top_3 += 1
+
         if preds[0] == test_label[i]:
             cnt += 1
-    print("test accuracy = %f" % (cnt/nb_test_samples))
 
+    print("\n top 1 test accuracy = %f" % (cnt/nb_test_samples))
+    print("\n top 3 test accuracy = %f" % (cnt_top_3/nb_test_samples))
 
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1. / 255)
