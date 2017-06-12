@@ -25,7 +25,7 @@ NB_TEST_PER_CLASS = 300
 nb_train_samples = NB_TRAIN_PER_CLASS * num_classes
 nb_validation_samples = NB_VAL_PER_CLASS * num_classes
 epochs = 20
-batch_size = 48
+batch_size = 24
 
 if K.image_data_format() == 'channels_first':
     input_shape = (3, img_width, img_height)
