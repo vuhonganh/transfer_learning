@@ -34,7 +34,8 @@ else:
 
 
 def vgg16_model():
-    model = keras.applications.VGG16(include_top=False, weights='imagenet')
+
+    model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
     print('model vgg16 loaded without top')
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=model.output_shape[1:]))
