@@ -5,6 +5,7 @@ from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 import numpy as np
+import os
 
 # NOTE THAT classes should be in sorted order because generator KERAS will do so if we don't specify classes
 classes = ['apple', 'banana', 'book', 'key', 'keyboard', 'monitor', 'mouse', 'mug', 'orange', 'pear', 'pen', 'wallet']
@@ -23,7 +24,7 @@ NB_TEST_PER_CLASS = 300
 
 nb_train_samples = NB_TRAIN_PER_CLASS * num_classes
 nb_validation_samples = NB_VAL_PER_CLASS * num_classes
-epochs = 2
+epochs = 20
 batch_size = 48
 
 if K.image_data_format() == 'channels_first':
@@ -138,9 +139,12 @@ def add_fc_model():
     adam_opt = keras.optimizers.Adam(lr=1e-4, decay=1e-6)
 
     fc_model.compile(loss='categorical_crossentropy', optimizer=adam_opt, metrics=['accuracy'])
-    fc_model.fit(train_data, train_label, epochs=1, batch_size=batch_size, validation_data=(val_data, val_label))
+    fc_model.fit(train_data, train_label, epochs=epochs, batch_size=batch_size, validation_data=(val_data, val_label))
     fc_model.save('bottleneck_fc_model.h5')
 
-save_bottlebeck_features()
+if os.path.isfile('bottleneck_features_train.npy'):
+    add_fc_model()
+else:
+    save_bottlebeck_features()
 
 
