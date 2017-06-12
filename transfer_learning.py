@@ -132,13 +132,13 @@ def add_fc_model():
 
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=train_data.shape[1:]))
-    fc_model.add(Dense(1024, activation='relu'))
+    fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
-    fc_model.add(Dense(256, activation='relu'))
+    fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
-    adam_opt = keras.optimizers.Adam(lr=1e-4, decay=1e-6)
+    adam_opt = keras.optimizers.Adam(lr=1e-5, decay=1e-6)
 
     fc_model.compile(loss='categorical_crossentropy', optimizer=adam_opt, metrics=['accuracy'])
     fc_model.fit(train_data, train_label, epochs=epochs, batch_size=batch_size, validation_data=(val_data, val_label))
