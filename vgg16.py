@@ -10,6 +10,8 @@ import numpy as np
 from data_reader import get_data, get_data_stratify
 import os
 import sys
+import glob
+from scipy.misc import imread, imresize, imsave
 
 classes = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
            "banana", "key", "mug", "pear", "orange"]
@@ -459,7 +461,7 @@ def save_cur_weights():
         print("done saving!")
 
 
-if __name__ == '__main__':
+def training():
     print("Enter batch size: ", end='')
     batch_size = 64
     try:
@@ -485,7 +487,7 @@ if __name__ == '__main__':
     length_val = len(val_idx)
     length_test = len(test_idx)
 
-    #checkpoint_dir = './.checkpoints/'
+    # checkpoint_dir = './.checkpoints/'
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -508,7 +510,7 @@ if __name__ == '__main__':
         for i in range(num_train_step):
             if cur_id > length_train:
                 cur_id = 0
-            idx_batch = train_idx[cur_id: cur_id+batch_size]
+            idx_batch = train_idx[cur_id: cur_id + batch_size]
             cur_id += batch_size
 
             if len(idx_batch) == 0:
@@ -524,8 +526,8 @@ if __name__ == '__main__':
 
             print("step %d: %f" % (i, loss_batch))
 
-            if (i+1) % print_val_size == 0:
-                idx_val_batch = val_idx[cur_val_id:cur_val_id+batch_size]
+            if (i + 1) % print_val_size == 0:
+                idx_val_batch = val_idx[cur_val_id:cur_val_id + batch_size]
                 cur_val_id += batch_size
                 if cur_val_id > length_val:
                     cur_val_id = 0
@@ -545,7 +547,7 @@ if __name__ == '__main__':
                         cnt += 1
                 print("batch validation accuracy: %f" % (cnt / batch_size))
 
-            if (i+1) % save_param_size == 0:
+            if (i + 1) % save_param_size == 0:
                 print("saving to npz file...")
                 # saver.save(sess, checkpoint_dir + 'model_', int((i+1)/skip_size))
                 fc_layers = sess.run(fetches=vgg.fc_parameters)
@@ -596,3 +598,49 @@ if __name__ == '__main__':
         print("idx that guess wrongly are saved")
 
 
+def test_cozmo_img():
+    path = "/home/hav/workplace/camcoz/"
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        vgg = vgg16('vgg16_weights.npz', sess, 1e-5, 'fc_lay_20epoch.npz')
+
+        list_imgs = []
+        list_name = []
+        for file_name in glob.glob(path + "/*.JPEG"):
+            img = imread(file_name, mode="RGB")
+            img = imresize(img, (224, 224))
+            list_imgs.append(img)
+            list_name.append(file_name)
+
+        cozmo_feed = vgg.create_feed_dict(input_batch=list_imgs)
+        cozmo_probs = sess.run(fetches=vgg.test_probs, feed_dict=cozmo_feed)
+        for i in range(len(list_imgs)):
+            print("\nconsider image: %s" % list_name[i])
+            preds = (np.argsort(cozmo_probs[i])[::-1])[0:5]
+            for p in preds:
+                print(classes[p], cozmo_probs[i][p])
+
+
+if __name__ == '__main__':
+    # testing with image from cozmo:
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        vgg = vgg16('vgg16_weights.npz', sess, 1e-5, 'fc_lay_20epoch.npz')
+        images, labels, train_idx, val_idx, test_idx = get_data_stratify()
+        length_test = int(len(test_idx)/5)
+        cur_test_id = 0
+        batch_size = 64
+        while cur_test_id < length_test:
+            idx_test_batch = test_idx[cur_test_id: cur_test_id + batch_size]
+            test_images = images[idx_test_batch]
+            test_labels = labels[idx_test_batch]
+            test_feed = vgg.create_feed_dict(input_batch=test_images)
+            test_probs = sess.run(fetches=vgg.test_probs, feed_dict=test_feed)
+            integer_labels_test = np.argmax(test_labels, axis=1)
+            for i in range(len(idx_test_batch)):
+                print("\ntrue label = %s" % classes[integer_labels_test[i]])
+                preds = (np.argsort(test_probs[i])[::-1])[0:2]
+                for p in preds:
+                    print(classes[p], test_probs[i][p])
+
+            cur_test_id += batch_size
