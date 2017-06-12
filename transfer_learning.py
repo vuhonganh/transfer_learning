@@ -32,28 +32,27 @@ if K.image_data_format() == 'channels_first':
 else:
     input_shape = (img_width, img_height, 3)
 
-def simple_model():
-    model = Sequential()
-    model.add(Conv2D(32, (3, 3), input_shape=input_shape))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Conv2D(32, (3, 3)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+def vgg16_model():
+    model = keras.applications.VGG16(include_top=False, weights='imagenet')
+    print('model vgg16 loaded without top')
+    fc_model = Sequential()
+    fc_model.add(Flatten(input_shape=model.output_shape[1:]))
+    fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
+    fc_model.add(Dropout(0.5))
+    fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
+    fc_model.add(Dropout(0.5))
+    fc_model.add(Dense(num_classes))
+    fc_model.add(Activation('softmax'))
+    fc_model.load_weights('bottleneck_fc_model.h5')
 
-    model.add(Conv2D(64, (3, 3)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(fc_model)
 
-    model.add(Flatten())
-    model.add(Dense(64))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(num_classes))
-    model.add(Activation('softmax'))
+    for layer in model.layers[:25]:
+        layer.trainable = False
 
-    adam_opt = keras.optimizers.Adam(lr=1e-3, decay=1e-6)
+    adam_opt = keras.optimizers.Adam(lr=1e-5, decay=1e-6)
+
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=adam_opt,
@@ -86,7 +85,6 @@ def simple_model():
                         validation_data=val_generator,
                         validation_steps=nb_validation_samples//batch_size,
                         )
-
 
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1. / 255)
@@ -144,9 +142,12 @@ def add_fc_model():
     fc_model.fit(train_data, train_label, epochs=epochs, batch_size=batch_size, validation_data=(val_data, val_label))
     fc_model.save('bottleneck_fc_model.h5')
 
-if os.path.isfile('bottleneck_features_train.npy'):
-    add_fc_model()
-else:
-    save_bottlebeck_features()
+
+def do_on_top():
+    if os.path.isfile('bottleneck_features_train.npy'):
+        add_fc_model()
+    else:
+        save_bottlebeck_features()
 
 
+vgg16_model()
