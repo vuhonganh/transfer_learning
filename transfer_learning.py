@@ -132,6 +132,8 @@ def add_fc_model():
 
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=train_data.shape[1:]))
+    fc_model.add(Dense(1024, activation='relu'))
+    fc_model.add(Dropout(0.5))
     fc_model.add(Dense(256, activation='relu'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
