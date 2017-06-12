@@ -34,7 +34,7 @@ else:
     input_shape = (img_width, img_height, 3)
 
 
-def vgg16_model():
+def vgg16_model(nb_epoch=1):
 
     base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
     print('model vgg16 loaded without top')
@@ -85,7 +85,7 @@ def vgg16_model():
 
     model.fit_generator(train_generator,
                         steps_per_epoch=nb_train_samples // batch_size,
-                        epochs=epochs,
+                        epochs=nb_epoch,
                         validation_data=val_generator,
                         validation_steps=nb_validation_samples//batch_size,
                         )
@@ -100,12 +100,17 @@ def vgg16_model():
                                             shuffle=False)
     predictions = model.predict_generator(test_generator, nb_test_samples // batch_size, verbose=1)
     np.save('predictions.npy', predictions)
+    test_label = [i // NB_TEST_PER_CLASS for i in range(nb_test_samples)]
+    cnt = 0
     for i in range(predictions.shape[0]):
         print("current item %d: " % i)
-        print("expect class %s" % classes[i // NB_TEST_PER_CLASS])
+        print("expect class %s" % classes[test_label[i]])
         preds = (np.argsort(predictions[i])[::-1])[0:3]
         for p in preds:
             print(classes[p], predictions[i][p])
+        if preds[0] == test_label[i]:
+            cnt += 1
+    print("test accuracy = %f" % (cnt/nb_test_samples))
 
 
 def save_bottlebeck_features():
@@ -171,5 +176,6 @@ def do_on_top():
     else:
         save_bottlebeck_features()
 
-
-vgg16_model()
+print("enter number of epoch: ", end='')
+nb_epochs = int(input())
+vgg16_model(nb_epochs)
