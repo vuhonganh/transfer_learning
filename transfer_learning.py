@@ -16,7 +16,7 @@ train_data_dir = 'data/train'
 val_data_dir = 'data/val'
 test_data_dir = 'data/test'
 
-data_augmentation = False
+data_augmentation = True
 
 NB_TRAIN_PER_CLASS = 720
 NB_VAL_PER_CLASS = 180
@@ -24,8 +24,9 @@ NB_TEST_PER_CLASS = 300
 
 nb_train_samples = NB_TRAIN_PER_CLASS * num_classes
 nb_validation_samples = NB_VAL_PER_CLASS * num_classes
-epochs = 20
-batch_size = 24
+nb_test_samples = NB_TEST_PER_CLASS * num_classes
+epochs = 1
+batch_size = 48
 
 if K.image_data_format() == 'channels_first':
     input_shape = (3, img_width, img_height)
@@ -39,17 +40,19 @@ def vgg16_model():
     print('model vgg16 loaded without top')
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-    fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
-    fc_model.add(Dropout(0.5))
+    # fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
+    # fc_model.add(Dropout(0.5))
     fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
-    fc_model.load_weights('bottleneck_fc_model.h5')
+    #fc_model.load_weights('bottleneck_fc_model.h5')
 
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
 
-    for layer in model.layers[:25]:
+    # freeze until the last conv block (conv 5) to fine tune this last one
+    print(model.layers)
+    for layer in model.layers[:15]:
         layer.trainable = False
 
     adam_opt = keras.optimizers.Adam(lr=1e-5, decay=1e-6)
@@ -86,6 +89,24 @@ def vgg16_model():
                         validation_data=val_generator,
                         validation_steps=nb_validation_samples//batch_size,
                         )
+    model.save('full_model.h5')
+
+    test_datagen = ImageDataGenerator(rescale=1. / 255)
+    test_generator = test_datagen.flow_from_directory(test_data_dir,
+                                            target_size=(img_width, img_height),
+                                            batch_size=batch_size,
+                                            classes=classes,
+                                            class_mode=None,
+                                            shuffle=False)
+    predictions = model.predict_generator(test_generator, nb_test_samples // batch_size, verbose=1)
+    np.save('predictions.npy', predictions)
+    for i in range(predictions.shape[0]):
+        print("current item %d: " % i)
+        print("expect class %s" % classes[i // NB_TEST_PER_CLASS])
+        preds = (np.argsort(predictions[i])[::-1])[0:3]
+        for p in preds:
+            print(classes[p], predictions[i][p])
+
 
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1. / 255)
