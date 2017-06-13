@@ -8,9 +8,9 @@ import numpy as np
 import os
 from data_reader import get_data_stratify
 
-import matplotlib
+#import matplotlib
 # Force matplotlib to not use any Xwindows backend (for remote Ubuntu server)
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from time import gmtime, strftime
