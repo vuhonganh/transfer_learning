@@ -7,7 +7,12 @@ from keras.layers import Activation, Dropout, Flatten, Dense
 import numpy as np
 import os
 from data_reader import get_data_stratify
+
+import matplotlib
+# Force matplotlib to not use any Xwindows backend (for remote Ubuntu server)
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 from time import gmtime, strftime
 
 # NOTE THAT classes should be in sorted order because generator KERAS will do so if we don't specify classes
