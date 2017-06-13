@@ -409,11 +409,15 @@ def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, 
     y_test = labels[test_idx]
 
     log_dir_name = strftime(".log_%Y_%m_%d_%H_%M_%S/", gmtime())
+    lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3,
+                                                       verbose=1, mode='auto',
+                                                       epsilon=0.0001, cooldown=0, min_lr=1e-6)
+
     tbCallBack = keras.callbacks.TensorBoard(log_dir=log_dir_name, histogram_freq=0, write_graph=True, write_images=True)
     history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch,
                         validation_data=(x_val, y_val),
                         verbose=1,
-                        callbacks=[tbCallBack])
+                        callbacks=[tbCallBack, lrPlatCallBack])
     print("saving model")
     model.save('reader_resnet_keras.h5')
     print("model saved!\n")
