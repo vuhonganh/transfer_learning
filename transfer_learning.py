@@ -7,10 +7,6 @@ from keras.layers import Activation, Dropout, Flatten, Dense
 import numpy as np
 import os
 from data_reader import get_data_stratify
-
-#import matplotlib
-# Force matplotlib to not use any Xwindows backend (for remote Ubuntu server)
-#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from time import gmtime, strftime
@@ -42,9 +38,7 @@ else:
     input_shape = (img_width, img_height, 3)
 
 
-def get_vgg_old():
-    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
-    print('model vgg16 loaded without top')
+def get_fc_model_1():
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
     fc_model.add(Dropout(0.5))
@@ -54,7 +48,24 @@ def get_vgg_old():
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
+    return fc_model
+
+
+def get_vgg_old():
+    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+    print('model vgg16 loaded without top')
+    fc_model = get_fc_model_1()
     #fc_model.load_weights('bottleneck_fc_model.h5')  # in case fine-tuning
+    model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
+    return model
+
+
+def get_resnet():
+    base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
+    for layer in base_model.layers:
+        print("freeze layer", layer)
+        layer.trainable = False
+    fc_model = get_fc_model_1()
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
     return model
 
@@ -305,26 +316,72 @@ def do_on_top():
         save_bottlebeck_features()
 
 
-print("enter number of epoch: ", end='')
-try:
-    nb_epochs = int(input())
-except ValueError:
-    print("got error, use default nb epoch then")
-    nb_epochs = 1
+def input_hyperparams():
+    print("enter number of epoch: ", end='')
+    try:
+        nb_epochs = int(input())
+    except ValueError:
+        print("got error, use default nb epoch then")
+        nb_epochs = 1
 
-print("enter learning rate: ", end='')
-try:
-    learning_rate = float(input())
-except ValueError:
-    print("got error, use default learning rate then")
-    learning_rate = 1e-4
+    print("enter learning rate: ", end='')
+    try:
+        learning_rate = float(input())
+    except ValueError:
+        print("got error, use default learning rate then")
+        learning_rate = 1e-4
 
-print("enter batch_size: ", end='')
-try:
-    user_batch_size = int(input())
-except ValueError:
-    print("got error, use default learning rate then")
-    user_batch_size = 64
+    print("enter batch_size: ", end='')
+    try:
+        user_batch_size = int(input())
+    except ValueError:
+        print("got error, use default learning rate then")
+        user_batch_size = 64
+    return nb_epochs, learning_rate, user_batch_size
 
-# train_vgg16_model_from_dir(nb_epochs)
-train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size)
+
+def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
+    images, labels, train_idx, val_idx, test_idx = get_data_stratify()
+    print("done loading data")
+    model = get_resnet()
+    print("done loading model resnet")
+
+    adam_opt = keras.optimizers.Adam(lr=learning_rate)
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=adam_opt,
+                  metrics=['accuracy'])
+
+    x_train = images[train_idx]
+    y_train = labels[train_idx]
+    x_val = images[val_idx]
+    y_val = labels[val_idx]
+    x_test = images[test_idx]
+    y_test = labels[test_idx]
+
+    history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch, validation_data=(x_val, y_val),
+                        verbose=1)
+    print("saving model")
+    model.save('reader_resnet_keras.h5')
+    print("model saved!\n")
+
+    print("testing model")
+    test_from_reader_data(x_test, y_test, model)
+
+    print("plotting training process")
+    plot_history(history)
+
+
+nb_epochs, learning_rate, user_batch_size = input_hyperparams()
+# # train_vgg16_model_from_dir(nb_epochs)
+print("enter model to train (0:vgg, 1:resnet): ", end='')
+try:
+    choose_resnet = int(input())
+except ValueError:
+    choose_resnet = 0
+    print("got error, default is vgg")
+
+if choose_resnet:
+    train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size)
+else:
+    train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size)
