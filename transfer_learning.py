@@ -65,9 +65,9 @@ def get_fc_model_2(base_model):
 def get_fc_model_3(base_model):
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-    print("use he_normal and l2 reg = 1e-3")
+    print("use he_normal and l2 reg = 1e-2")
     fc_model.add(Dense(512, activation='relu', kernel_initializer='he_normal',
-                       kernel_regularizer=keras.regularizers.l2(1e-3)))
+                       kernel_regularizer=keras.regularizers.l2(1e-2)))
     fc_model.add(Dropout(0.32))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
@@ -469,8 +469,8 @@ choose_resnet, continue_training, nb_epochs, learning_rate, user_batch_size = in
 # # train_vgg16_model_from_dir(nb_epochs)
 
 if choose_resnet:
-    # train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
-    train_resnet_from_dir(nb_epochs, learning_rate, user_batch_size, continue_training)
+    train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
+    #train_resnet_from_dir(nb_epochs, learning_rate, user_batch_size, continue_training)
 else:
     train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
 
