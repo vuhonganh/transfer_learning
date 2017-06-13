@@ -8,7 +8,7 @@ import numpy as np
 import os
 from data_reader import get_data_stratify
 import matplotlib.pyplot as plt
-
+from time import gmtime, strftime
 
 # NOTE THAT classes should be in sorted order because generator KERAS will do so if we don't specify classes
 classes = ['apple', 'banana', 'book', 'key', 'keyboard', 'monitor', 'mouse', 'mug', 'orange', 'pear', 'pen', 'wallet']
@@ -168,11 +168,15 @@ def test_from_reader_data(x_test, y_test, model):
     print("top 3 accuracy = %f" % acc_3)
 
 
-def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
+def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, continue_training=True):
     images, labels, train_idx, val_idx, test_idx = get_data_stratify()
     print("done loading data")
     model = get_vgg_old()
     print("done loading model")
+
+    if continue_training:
+        print("continue training from h5 model file")
+        model.load_weights('reader_model_keras.h5')
 
     # freeze all conv net
     for layer in model.layers[:19]:
@@ -196,6 +200,7 @@ def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
                         verbose=1)
     print("saving model")
     model.save('reader_model_keras.h5')
+    print("model saved!\n")
 
     print("testing model")
     test_from_reader_data(x_test, y_test, model)
@@ -208,13 +213,18 @@ def plot_history(history):
     # list all data in history
     print(history.history.keys())
     # summarize history for accuracy
+    plt.figure(1)
+    plt.subplot(121)
     plt.plot(history.history['acc'])
     plt.plot(history.history['val_acc'])
     plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
-    plt.show()
+    prefix_file_name = strftime("%Y-%m-%d-%H:%M:%S", gmtime())
+
+    plt.subplot(122)
+    #plt.show()
     # summarize history for loss
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
@@ -222,7 +232,8 @@ def plot_history(history):
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
-    plt.show()
+    plt.savefig(prefix_file_name + ".png")
+    #plt.show()
 
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1. / 255)
@@ -289,7 +300,6 @@ def do_on_top():
         save_bottlebeck_features()
 
 
-
 print("enter number of epoch: ", end='')
 try:
     nb_epochs = int(input())
@@ -313,4 +323,3 @@ except ValueError:
 
 # train_vgg16_model_from_dir(nb_epochs)
 train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size)
-
