@@ -65,10 +65,10 @@ def get_fc_model_2(base_model):
 def get_fc_model_3(base_model):
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-
+    print("use he_normal and l2 reg = 1e-3")
     fc_model.add(Dense(512, activation='relu', kernel_initializer='he_normal',
                        kernel_regularizer=keras.regularizers.l2(1e-3)))
-    fc_model.add(Dropout(0.4))
+    fc_model.add(Dropout(0.32))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
     return fc_model
@@ -118,7 +118,7 @@ def get_gen_from_dir():
     return train_generator, val_generator
 
 
-def test_from_dir(model):
+def test_from_dir(model, debug=False):
     test_datagen = ImageDataGenerator(rescale=1. / 255)
     test_generator = test_datagen.flow_from_directory(test_data_dir,
                                                       target_size=(img_width, img_height),
@@ -132,11 +132,13 @@ def test_from_dir(model):
     cnt = 0
     cnt_top_3 = 0
     for i in range(predictions.shape[0]):
-        print("\ncurrent item %d: " % i)
-        print("expect class %s" % classes[test_label[i]])
+        if debug:
+            print("\ncurrent item %d: " % i)
+            print("expect class %s" % classes[test_label[i]])
         preds = (np.argsort(predictions[i])[::-1])[0:3]
         for p in preds:
-            print(classes[p], predictions[i][p])
+            if debug:
+                print(classes[p], predictions[i][p])
             if p == test_label[i]:
                 cnt_top_3 += 1
 
@@ -383,6 +385,40 @@ def input_hyperparams():
         print("got error, use default learning rate then")
         user_batch_size = 64
     return choose_resnet, continue_training, nb_epochs, learning_rate, user_batch_size
+
+
+def train_resnet_from_dir(nb_epoch=1, learning_rate=1e-4, cur_batch_size=48, continue_training=True):
+    model = get_resnet()
+    if os.path.isfile('from_dir_resnet_keras.h5'):
+        if continue_training:
+            model.load_weights('from_dir_resnet_keras.h5')
+    print("done loading model")
+
+    adam_opt = keras.optimizers.Adam(lr=learning_rate)
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=adam_opt,
+                  metrics=['accuracy'])
+
+    train_generator, val_generator = get_gen_from_dir()
+
+    log_dir_name = strftime(".log_%Y_%m_%d_%H_%M_%S/", gmtime())
+    lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3,
+                                                       verbose=1, mode='auto',
+                                                       epsilon=0.0001, cooldown=0, min_lr=1e-6)
+
+    tbCallBack = keras.callbacks.TensorBoard(log_dir=log_dir_name, histogram_freq=0, write_graph=True,
+                                             write_images=True)
+    history = model.fit_generator(train_generator,
+                                  steps_per_epoch=nb_train_samples // cur_batch_size,
+                                  epochs=nb_epoch,
+                                  validation_data=val_generator,
+                                  validation_steps=nb_validation_samples // cur_batch_size,
+                                  callbacks=[tbCallBack, lrPlatCallBack]
+                                  )
+    model.save('from_dir_resnet_keras.h5')
+    test_from_dir(model)
+    plot_history(history)
 
 
 def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, continue_training=True):
