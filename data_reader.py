@@ -54,6 +54,18 @@ def get_data_stratify(file_name="mydata_1200.npz"):
 
     return images, labels, train_idx, val_idx, test_idx
 
+
+def get_data_arr(file_name="mydata_1200.npz"):
+    images, labels, train_idx, val_idx, test_idx = get_data_stratify(file_name)
+    x_train = images[train_idx]
+    y_train = labels[train_idx]
+    x_val = images[val_idx]
+    y_val = labels[val_idx]
+    x_test = images[test_idx]
+    y_test = labels[test_idx]
+    return x_train, y_train, x_val, y_val, x_test, y_test
+
+
 def get_fc_layers():
     weight_file = "fc_lay.npz"
     weights = np.load(weight_file)
