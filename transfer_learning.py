@@ -246,6 +246,10 @@ def do_on_top():
 
 
 print("enter number of epoch: ", end='')
-nb_epochs = int(input())
+try:
+    nb_epochs = int(input())
+except ValueError:
+    print("got error, use default nb epoch then")
+
 # train_vgg16_model_from_dir(nb_epochs)
 train_vgg_from_reader(nb_epochs)
