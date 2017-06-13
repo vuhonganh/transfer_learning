@@ -41,9 +41,8 @@ else:
 def get_fc_model_1(base_model):
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-    #fc_model.add(Dropout(0.5))
     fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
-    fc_model.add(Dropout(0.7))
+    fc_model.add(Dropout(0.5))
     fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
@@ -51,10 +50,30 @@ def get_fc_model_1(base_model):
     return fc_model
 
 
+def get_fc_model_2(base_model):
+    fc_model = Sequential()
+    fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
+    fc_model.add(Dense(4096, activation='relu', kernel_initializer='VarianceScaling'))
+    fc_model.add(Dropout(0.4))
+    fc_model.add(Dense(512, activation='relu', kernel_initializer='VarianceScaling'))
+    fc_model.add(Dropout(0.4))
+    fc_model.add(Dense(num_classes))
+    fc_model.add(Activation('softmax'))
+    return fc_model
+
+
+def get_fc_model_3(base_model):
+    fc_model = Sequential()
+    fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
+    fc_model.add(Dense(512, activation='relu', kernel_initializer='VarianceScaling'))
+    fc_model.add(Dropout(0.4))
+    fc_model.add(Dense(num_classes))
+    fc_model.add(Activation('softmax'))
+    return fc_model
+
+
 def get_vgg_old():
-    # TODO: should we use pooling?
     base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
-    # base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape, pooling='max')
     print('model vgg16 loaded without top')
     fc_model = get_fc_model_1(base_model)
     #fc_model.load_weights('bottleneck_fc_model.h5')  # in case fine-tuning
@@ -64,8 +83,6 @@ def get_vgg_old():
 
 def get_resnet():
     base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-    # base_model = keras.applications.ResNet50(include_top=False, weights='imagenet',
-    #                                          input_shape=input_shape, pooling='max')
     for layer in base_model.layers:
         print("freeze layer", layer)
         layer.trainable = False
@@ -195,8 +212,9 @@ def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, con
     print("done loading model")
 
     if continue_training:
-        print("continue training from h5 model file")
-        model.load_weights('reader_model_keras.h5')
+        if os.path.isfile('reader_model_keras.h5'):
+            print("continue training from h5 model file reader_model_keras.h5")
+            model.load_weights('reader_model_keras.h5')
 
     # freeze all conv net
     for layer in model.layers[:19]:
@@ -321,6 +339,20 @@ def do_on_top():
 
 
 def input_hyperparams():
+    print("enter model to train (0:vgg, 1:resnet): ", end='')
+    try:
+        choose_resnet = int(input())
+    except ValueError:
+        choose_resnet = 1
+        print("got error, default is resnet")
+
+    print("continue training (0:no, 1:YES)", end='')
+    try:
+        continue_training = int(input()) == 1
+    except ValueError:
+        continue_training = True
+        print("got error, default is continue training")
+
     print("enter number of epoch: ", end='')
     try:
         nb_epochs = int(input())
@@ -341,13 +373,17 @@ def input_hyperparams():
     except ValueError:
         print("got error, use default learning rate then")
         user_batch_size = 64
-    return nb_epochs, learning_rate, user_batch_size
+    return choose_resnet, continue_training, nb_epochs, learning_rate, user_batch_size
 
 
-def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
+def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, continue_training=True):
     images, labels, train_idx, val_idx, test_idx = get_data_stratify()
     print("done loading data")
     model = get_resnet()
+    if os.path.isfile('reader_resnet_keras.h5'):
+        if continue_training:
+            print("loading weights from h5 file reader_resnet_keras.h5 to continue training")
+            model.load_weights('reader_resnet_keras.h5')
     print("done loading model resnet")
 
     adam_opt = keras.optimizers.Adam(lr=learning_rate)
@@ -376,16 +412,10 @@ def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
     plot_history(history)
 
 
-nb_epochs, learning_rate, user_batch_size = input_hyperparams()
+choose_resnet, continue_training, nb_epochs, learning_rate, user_batch_size = input_hyperparams()
 # # train_vgg16_model_from_dir(nb_epochs)
-print("enter model to train (0:vgg, 1:resnet): ", end='')
-try:
-    choose_resnet = int(input())
-except ValueError:
-    choose_resnet = 0
-    print("got error, default is vgg")
 
 if choose_resnet:
-    train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size)
+    train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
 else:
-    train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size)
+    train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
