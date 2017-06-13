@@ -38,10 +38,10 @@ else:
     input_shape = (img_width, img_height, 3)
 
 
-def get_fc_model_1():
+def get_fc_model_1(base_model):
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-    fc_model.add(Dropout(0.5))
+    #fc_model.add(Dropout(0.5))
     fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.7))
     fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
@@ -52,20 +52,24 @@ def get_fc_model_1():
 
 
 def get_vgg_old():
-    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+    # TODO: should we use pooling?
+    # base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape, pooling='max')
     print('model vgg16 loaded without top')
-    fc_model = get_fc_model_1()
+    fc_model = get_fc_model_1(base_model)
     #fc_model.load_weights('bottleneck_fc_model.h5')  # in case fine-tuning
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
     return model
 
 
 def get_resnet():
-    base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
+    # base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
+    base_model = keras.applications.ResNet50(include_top=False, weights='imagenet',
+                                             input_shape=input_shape, pooling='max')
     for layer in base_model.layers:
         print("freeze layer", layer)
         layer.trainable = False
-    fc_model = get_fc_model_1()
+    fc_model = get_fc_model_1(base_model)
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
     return model
 
