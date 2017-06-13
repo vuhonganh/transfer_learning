@@ -86,7 +86,7 @@ def get_resnet():
     for layer in base_model.layers:
         print("freeze layer", layer)
         layer.trainable = False
-    fc_model = get_fc_model_1(base_model)
+    fc_model = get_fc_model_3(base_model)
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
     return model
 
@@ -234,8 +234,14 @@ def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, con
     x_test = images[test_idx]
     y_test = labels[test_idx]
 
-    history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch, validation_data=(x_val, y_val),
-                        verbose=1)
+    log_dir_name = strftime(".log_%Y_%m_%d_%H_%M_%S/", gmtime())
+    tbCallBack = keras.callbacks.TensorBoard(log_dir=log_dir_name, histogram_freq=0, write_graph=True,
+                                             write_images=True)
+    history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch,
+                        validation_data=(x_val, y_val),
+                        verbose=1,
+                        callbacks=[tbCallBack])
+
     print("saving model")
     model.save('reader_model_keras.h5')
     print("model saved!\n")
@@ -399,8 +405,12 @@ def train_resnet_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64, 
     x_test = images[test_idx]
     y_test = labels[test_idx]
 
-    history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch, validation_data=(x_val, y_val),
-                        verbose=1)
+    log_dir_name = strftime(".log_%Y_%m_%d_%H_%M_%S/", gmtime())
+    tbCallBack = keras.callbacks.TensorBoard(log_dir=log_dir_name, histogram_freq=0, write_graph=True, write_images=True)
+    history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch,
+                        validation_data=(x_val, y_val),
+                        verbose=1,
+                        callbacks=[tbCallBack])
     print("saving model")
     model.save('reader_resnet_keras.h5')
     print("model saved!\n")
@@ -419,3 +429,4 @@ if choose_resnet:
     train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
 else:
     train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
+
