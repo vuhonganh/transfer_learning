@@ -6,6 +6,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 import numpy as np
 import os
+from data_reader import get_data_stratify
 
 # NOTE THAT classes should be in sorted order because generator KERAS will do so if we don't specify classes
 classes = ['apple', 'banana', 'book', 'key', 'keyboard', 'monitor', 'mouse', 'mug', 'orange', 'pear', 'pen', 'wallet']
@@ -34,34 +35,22 @@ else:
     input_shape = (img_width, img_height, 3)
 
 
-def vgg16_model(nb_epoch=1):
-
+def get_vgg_old():
     base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
     print('model vgg16 loaded without top')
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-    # fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
-    # fc_model.add(Dropout(0.5))
+    fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
+    fc_model.add(Dropout(0.5))
     fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
-    #fc_model.load_weights('bottleneck_fc_model.h5')
-
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
-
-    # freeze until the last conv block (conv 5) to fine tune this last one
-    print(model.layers)
-    for layer in model.layers[:15]:
-        layer.trainable = False
-
-    adam_opt = keras.optimizers.Adam(lr=1e-5, decay=1e-6)
+    return model
 
 
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=adam_opt,
-                  metrics=['accuracy'])
-
+def get_gen_from_dir():
     if data_augmentation:
         # this is the augmentation configuration we will use for training
         train_datagen = ImageDataGenerator(
@@ -82,22 +71,17 @@ def vgg16_model(nb_epoch=1):
                                                     target_size=(img_width, img_height),
                                                     batch_size=batch_size
                                                     )
+    return train_generator, val_generator
 
-    model.fit_generator(train_generator,
-                        steps_per_epoch=nb_train_samples // batch_size,
-                        epochs=nb_epoch,
-                        validation_data=val_generator,
-                        validation_steps=nb_validation_samples//batch_size,
-                        )
-    model.save('full_model.h5')
 
+def test_from_dir(model):
     test_datagen = ImageDataGenerator(rescale=1. / 255)
     test_generator = test_datagen.flow_from_directory(test_data_dir,
-                                            target_size=(img_width, img_height),
-                                            batch_size=batch_size,
-                                            classes=classes,
-                                            class_mode=None,
-                                            shuffle=False)
+                                                      target_size=(img_width, img_height),
+                                                      batch_size=batch_size,
+                                                      classes=classes,
+                                                      class_mode=None,
+                                                      shuffle=False)
     predictions = model.predict_generator(test_generator, nb_test_samples // batch_size, verbose=1)
     np.save('predictions.npy', predictions)
     test_label = [i // NB_TEST_PER_CLASS for i in range(nb_test_samples)]
@@ -115,8 +99,86 @@ def vgg16_model(nb_epoch=1):
         if preds[0] == test_label[i]:
             cnt += 1
 
-    print("\n top 1 test accuracy = %f" % (cnt/nb_test_samples))
-    print("\n top 3 test accuracy = %f" % (cnt_top_3/nb_test_samples))
+    print("\n top 1 test accuracy = %f" % (cnt / nb_test_samples))
+    print("\n top 3 test accuracy = %f" % (cnt_top_3 / nb_test_samples))
+
+
+def train_vgg16_model_from_dir(nb_epoch=1):
+    model = get_vgg_old()
+    # freeze until the last conv block (conv 5) to fine tune this last one
+    # print(model.layers)
+    for layer in model.layers[:15]:
+        print("freeze layer", layer)
+        layer.trainable = False
+
+    adam_opt = keras.optimizers.Adam(lr=1e-5, decay=1e-6)
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=adam_opt,
+                  metrics=['accuracy'])
+
+    train_generator, val_generator = get_gen_from_dir()
+
+    model.fit_generator(train_generator,
+                        steps_per_epoch=nb_train_samples // batch_size,
+                        epochs=nb_epoch,
+                        validation_data=val_generator,
+                        validation_steps=nb_validation_samples//batch_size,
+                        )
+    model.save('old_model_keras.h5')
+
+
+def compute_accuracy(integer_label, predictions, debug=True):
+    """
+    calculate top-1 and top-3 accuracy
+    :param integer_label: 1D array contains index of class
+    :param predictions: prediction probabilities correspondingly
+    :return: top-1 and top-3 accuracy
+    """
+    cnt = 0
+    cnt_top_3 = 0
+    for i in range(predictions.shape[0]):
+        if debug:
+            print("\ncurrent item %d: " % i)
+            print("expect class %s" % classes[integer_label[i]])
+        preds = np.argsort(predictions[i])[::-1][0:3]
+        for p in preds:
+            if debug:
+                print(classes[p], predictions[i][p])
+            if p == integer_label[i]:
+                cnt_top_3 += 1
+        if preds[0] == integer_label[i]:
+            cnt += 1
+    return cnt / predictions.shape[0], cnt_top_3 / predictions.shape[0]
+
+
+def test_from_arr(x_test, y_test, model):
+    predictions = model.predict(x_test, batch_size=64, verbose=1)
+    integer_label = np.argmax(y_test, axis=1)
+    acc, acc_3 = compute_accuracy(integer_label, predictions)
+    print("top 1 accuracy = %f" % acc)
+    print("top 3 accuracy = %f" % acc_3)
+
+
+def train_vgg_from_reader(nb_epoch=1):
+    images, labels, train_idx, val_idx, test_idx = get_data_stratify()
+    model = get_vgg_old()
+    for layer in model.layers[:19]:
+        print("freeze layer", layer)
+        layer.trainable = False
+
+    x_train = images[train_idx]
+    y_train = labels[train_idx]
+    x_val = images[val_idx]
+    y_val = labels[val_idx]
+    x_test = images[test_idx]
+    y_test = labels[test_idx]
+
+    model.fit(x_train, y_train, batch_size=64, epochs=nb_epoch, validation_data=(x_val, y_val), verbose=1)
+    model.save('reader_model_keras.h5')
+    test_from_arr(x_test, y_test, model)
+
+
 
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1. / 255)
@@ -181,6 +243,9 @@ def do_on_top():
     else:
         save_bottlebeck_features()
 
+
+
 print("enter number of epoch: ", end='')
 nb_epochs = int(input())
-vgg16_model(nb_epochs)
+# train_vgg16_model_from_dir(nb_epochs)
+train_vgg_from_reader(nb_epochs)
