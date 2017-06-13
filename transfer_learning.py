@@ -162,10 +162,20 @@ def test_from_arr(x_test, y_test, model):
 
 def train_vgg_from_reader(nb_epoch=1):
     images, labels, train_idx, val_idx, test_idx = get_data_stratify()
+    print("done loading data")
     model = get_vgg_old()
+    print("done loading model")
+
+    # freeze all conv net
     for layer in model.layers[:19]:
         print("freeze layer", layer)
         layer.trainable = False
+
+    adam_opt = keras.optimizers.Adam(lr=2e-5)
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=adam_opt,
+                  metrics=['accuracy'])
 
     x_train = images[train_idx]
     y_train = labels[train_idx]
