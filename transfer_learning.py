@@ -469,7 +469,8 @@ choose_resnet, continue_training, nb_epochs, learning_rate, user_batch_size = in
 # # train_vgg16_model_from_dir(nb_epochs)
 
 if choose_resnet:
-    train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
+    # train_resnet_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
+    train_vgg16_model_from_dir(nb_epochs, learning_rate, user_batch_size, continue_training)
 else:
     train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size, continue_training)
 
