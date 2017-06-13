@@ -7,6 +7,8 @@ from keras.layers import Activation, Dropout, Flatten, Dense
 import numpy as np
 import os
 from data_reader import get_data_stratify
+import matplotlib.pyplot as plt
+
 
 # NOTE THAT classes should be in sorted order because generator KERAS will do so if we don't specify classes
 classes = ['apple', 'banana', 'book', 'key', 'keyboard', 'monitor', 'mouse', 'mug', 'orange', 'pear', 'pen', 'wallet']
@@ -39,9 +41,10 @@ def get_vgg_old():
     base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
     print('model vgg16 loaded without top')
     fc_model = Sequential()
+    fc_model.add(Dropout(0.5))
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
     fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
-    fc_model.add(Dropout(0.5))
+    fc_model.add(Dropout(0.7))
     fc_model.add(Dense(256, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
@@ -189,10 +192,37 @@ def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
     x_test = images[test_idx]
     y_test = labels[test_idx]
 
-    model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch, validation_data=(x_val, y_val), verbose=1)
+    history = model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch, validation_data=(x_val, y_val),
+                        verbose=1)
+    print("saving model")
     model.save('reader_model_keras.h5')
+
+    print("testing model")
     test_from_reader_data(x_test, y_test, model)
 
+    print("plotting training process")
+    plot_history(history)
+
+
+def plot_history(history):
+    # list all data in history
+    print(history.history.keys())
+    # summarize history for accuracy
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['val_acc'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
+    # summarize history for loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
 
 def save_bottlebeck_features():
     datagen = ImageDataGenerator(rescale=1. / 255)
@@ -237,6 +267,7 @@ def add_fc_model():
     val_label = keras.utils.to_categorical(np.load('bottleneck_label_val.npy'), num_classes=num_classes)
 
     fc_model = Sequential()
+    fc_model.add(Dropout(0.5))
     fc_model.add(Flatten(input_shape=train_data.shape[1:]))
     fc_model.add(Dense(1024, activation='relu', kernel_initializer='VarianceScaling'))
     fc_model.add(Dropout(0.5))
@@ -282,3 +313,4 @@ except ValueError:
 
 # train_vgg16_model_from_dir(nb_epochs)
 train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size)
+
