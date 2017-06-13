@@ -104,7 +104,7 @@ def test_from_dir(model):
     print("\n top 3 test accuracy = %f" % (cnt_top_3 / nb_test_samples))
 
 
-def train_vgg16_model_from_dir(nb_epoch=1, learning_rate=1e-4):
+def train_vgg16_model_from_dir(nb_epoch=1, learning_rate=1e-4, cur_batch_size=batch_size):
     model = get_vgg_old()
     # freeze until the last conv block (conv 5) to fine tune this last one
     # print(model.layers)
@@ -123,10 +123,10 @@ def train_vgg16_model_from_dir(nb_epoch=1, learning_rate=1e-4):
     train_generator, val_generator = get_gen_from_dir()
 
     model.fit_generator(train_generator,
-                        steps_per_epoch=nb_train_samples // batch_size,
+                        steps_per_epoch=nb_train_samples // cur_batch_size,
                         epochs=nb_epoch,
                         validation_data=val_generator,
-                        validation_steps=nb_validation_samples//batch_size,
+                        validation_steps=nb_validation_samples//cur_batch_size,
                         )
     model.save('old_model_keras.h5')
 
@@ -165,7 +165,7 @@ def test_from_reader_data(x_test, y_test, model):
     print("top 3 accuracy = %f" % acc_3)
 
 
-def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4):
+def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4, cur_batch_size=64):
     images, labels, train_idx, val_idx, test_idx = get_data_stratify()
     print("done loading data")
     model = get_vgg_old()
@@ -189,7 +189,7 @@ def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4):
     x_test = images[test_idx]
     y_test = labels[test_idx]
 
-    model.fit(x_train, y_train, batch_size=64, epochs=nb_epoch, validation_data=(x_val, y_val), verbose=1)
+    model.fit(x_train, y_train, batch_size=cur_batch_size, epochs=nb_epoch, validation_data=(x_val, y_val), verbose=1)
     model.save('reader_model_keras.h5')
     test_from_reader_data(x_test, y_test, model)
 
@@ -264,12 +264,21 @@ try:
     nb_epochs = int(input())
 except ValueError:
     print("got error, use default nb epoch then")
+    nb_epochs = 1
 
 print("enter learning rate: ", end='')
 try:
     learning_rate = float(input())
 except ValueError:
     print("got error, use default learning rate then")
+    learning_rate = 1e-4
+
+print("enter batch_size: ", end='')
+try:
+    user_batch_size = int(input())
+except ValueError:
+    print("got error, use default learning rate then")
+    user_batch_size = 64
 
 # train_vgg16_model_from_dir(nb_epochs)
-train_vgg_from_reader(nb_epochs, learning_rate)
+train_vgg_from_reader(nb_epochs, learning_rate, user_batch_size)
