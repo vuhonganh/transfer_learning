@@ -83,7 +83,8 @@ def get_vgg_old():
 
 def get_resnet():
     base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-    for layer in base_model.layers:
+    # fine tune 13 final layers
+    for layer in base_model.layers[:-13]:
         print("freeze layer", layer)
         layer.trainable = False
     fc_model = get_fc_model_3(base_model)
