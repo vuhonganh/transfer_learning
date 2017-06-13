@@ -46,6 +46,7 @@ def get_vgg_old():
     fc_model.add(Dropout(0.5))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
+    #fc_model.load_weights('bottleneck_fc_model.h5')  # in case fine-tuning
     model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
     return model
 
@@ -103,7 +104,7 @@ def test_from_dir(model):
     print("\n top 3 test accuracy = %f" % (cnt_top_3 / nb_test_samples))
 
 
-def train_vgg16_model_from_dir(nb_epoch=1):
+def train_vgg16_model_from_dir(nb_epoch=1, learning_rate=1e-4):
     model = get_vgg_old()
     # freeze until the last conv block (conv 5) to fine tune this last one
     # print(model.layers)
@@ -111,7 +112,9 @@ def train_vgg16_model_from_dir(nb_epoch=1):
         print("freeze layer", layer)
         layer.trainable = False
 
-    adam_opt = keras.optimizers.Adam(lr=1e-5, decay=1e-6)
+    adam_opt = keras.optimizers.Adam(lr=learning_rate)
+
+    # model.load_weights('old_model_keras.h5')
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=adam_opt,
@@ -157,12 +160,12 @@ def test_from_reader_data(x_test, y_test, model):
     integer_label = np.argmax(y_test, axis=1)
     classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
                       "banana", "key", "mug", "pear", "orange"]
-    acc, acc_3 = compute_accuracy(integer_label, predictions, cur_classes=classes_reader)
+    acc, acc_3 = compute_accuracy(integer_label, predictions, cur_classes=classes_reader, debug=False)
     print("top 1 accuracy = %f" % acc)
     print("top 3 accuracy = %f" % acc_3)
 
 
-def train_vgg_from_reader(nb_epoch=1):
+def train_vgg_from_reader(nb_epoch=1, learning_rate=1e-4):
     images, labels, train_idx, val_idx, test_idx = get_data_stratify()
     print("done loading data")
     model = get_vgg_old()
@@ -173,7 +176,7 @@ def train_vgg_from_reader(nb_epoch=1):
         print("freeze layer", layer)
         layer.trainable = False
 
-    adam_opt = keras.optimizers.Adam(lr=2e-5)
+    adam_opt = keras.optimizers.Adam(lr=learning_rate)
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=adam_opt,
@@ -262,5 +265,11 @@ try:
 except ValueError:
     print("got error, use default nb epoch then")
 
+print("enter learning rate: ", end='')
+try:
+    learning_rate = float(input())
+except ValueError:
+    print("got error, use default learning rate then")
+
 # train_vgg16_model_from_dir(nb_epochs)
-train_vgg_from_reader(nb_epochs)
+train_vgg_from_reader(nb_epochs, learning_rate)
