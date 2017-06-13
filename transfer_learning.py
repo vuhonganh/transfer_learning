@@ -128,7 +128,7 @@ def train_vgg16_model_from_dir(nb_epoch=1):
     model.save('old_model_keras.h5')
 
 
-def compute_accuracy(integer_label, predictions, debug=True):
+def compute_accuracy(integer_label, predictions, cur_classes=classes, debug=True):
     """
     calculate top-1 and top-3 accuracy
     :param integer_label: 1D array contains index of class
@@ -140,11 +140,11 @@ def compute_accuracy(integer_label, predictions, debug=True):
     for i in range(predictions.shape[0]):
         if debug:
             print("\ncurrent item %d: " % i)
-            print("expect class %s" % classes[integer_label[i]])
+            print("expect class %s" % cur_classes[integer_label[i]])
         preds = np.argsort(predictions[i])[::-1][0:3]
         for p in preds:
             if debug:
-                print(classes[p], predictions[i][p])
+                print(cur_classes[p], predictions[i][p])
             if p == integer_label[i]:
                 cnt_top_3 += 1
         if preds[0] == integer_label[i]:
@@ -152,10 +152,12 @@ def compute_accuracy(integer_label, predictions, debug=True):
     return cnt / predictions.shape[0], cnt_top_3 / predictions.shape[0]
 
 
-def test_from_arr(x_test, y_test, model):
+def test_from_reader_data(x_test, y_test, model):
     predictions = model.predict(x_test, batch_size=64, verbose=1)
     integer_label = np.argmax(y_test, axis=1)
-    acc, acc_3 = compute_accuracy(integer_label, predictions)
+    classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
+                      "banana", "key", "mug", "pear", "orange"]
+    acc, acc_3 = compute_accuracy(integer_label, predictions, cur_classes=classes_reader)
     print("top 1 accuracy = %f" % acc)
     print("top 3 accuracy = %f" % acc_3)
 
@@ -186,8 +188,7 @@ def train_vgg_from_reader(nb_epoch=1):
 
     model.fit(x_train, y_train, batch_size=64, epochs=nb_epoch, validation_data=(x_val, y_val), verbose=1)
     model.save('reader_model_keras.h5')
-    test_from_arr(x_test, y_test, model)
-
+    test_from_reader_data(x_test, y_test, model)
 
 
 def save_bottlebeck_features():
