@@ -65,7 +65,9 @@ def get_fc_model_2(base_model):
 def get_fc_model_3(base_model):
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
-    fc_model.add(Dense(512, activation='relu', kernel_initializer='VarianceScaling'))
+
+    fc_model.add(Dense(512, activation='relu', kernel_initializer='he_normal',
+                       kernel_regularizer=keras.regularizers.l2(1e-3)))
     fc_model.add(Dropout(0.4))
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
