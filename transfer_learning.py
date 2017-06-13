@@ -53,8 +53,8 @@ def get_fc_model_1(base_model):
 
 def get_vgg_old():
     # TODO: should we use pooling?
-    # base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
-    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape, pooling='max')
+    base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+    # base_model = keras.applications.VGG16(include_top=False, weights='imagenet', input_shape=input_shape, pooling='max')
     print('model vgg16 loaded without top')
     fc_model = get_fc_model_1(base_model)
     #fc_model.load_weights('bottleneck_fc_model.h5')  # in case fine-tuning
@@ -63,9 +63,9 @@ def get_vgg_old():
 
 
 def get_resnet():
-    # base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-    base_model = keras.applications.ResNet50(include_top=False, weights='imagenet',
-                                             input_shape=input_shape, pooling='max')
+    base_model = keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
+    # base_model = keras.applications.ResNet50(include_top=False, weights='imagenet',
+    #                                          input_shape=input_shape, pooling='max')
     for layer in base_model.layers:
         print("freeze layer", layer)
         layer.trainable = False
