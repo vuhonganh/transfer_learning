@@ -41,7 +41,7 @@ class TransferModel:
         self.acc = {'train': [], 'val': []}
         self.histograms = []
         self.test_acc = 0.0
-        self.test4_acc = 0.0
+        self.test2_acc = 0.0
 
     def set_fine_tune(self, new_lr=None):
         """
@@ -79,33 +79,33 @@ class TransferModel:
         # classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
         #                   "banana", "key", "mug", "pear", "orange"]
         cnt = 0
-        cnt_top_4 = 0
+        cnt_top_2 = 0
         nb_bin = 10
         hist_range = 1.0 / nb_bin
         histo = np.zeros(10)
 
         for i in range(predictions.shape[0]):
-            preds = np.argsort(predictions[i])[::-1][0:4]
+            preds = np.argsort(predictions[i])[::-1][0:2]
             for p in preds:
                 if p == integer_label[i]:
-                    cnt_top_4 += 1
+                    cnt_top_2 += 1
                 for k in range(nb_bin):
                     if k * hist_range <= predictions[i][p] < (k+1) * hist_range:
                         histo[k] += 1
             if preds[0] == integer_label[i]:
                 cnt += 1
         acc = cnt / predictions.shape[0]
-        acc_4 = cnt_top_4 / predictions.shape[0]
+        acc_2 = cnt_top_2 / predictions.shape[0]
         self.test_acc = acc
-        self.test4_acc = acc_4
+        self.test2_acc = acc_2
         self.histograms.append(histo)
         print("top 1 accuracy = %f" % acc)
-        print("top 4 accuracy = %f" % acc_4)
+        print("top 2 accuracy = %f" % acc_2)
 
     def plot_acc(self, baseline=0.9, savefig=False):
         plt.plot(self.acc['train'], label='train', color='blue')
         plt.plot(self.acc['val'], label='val', color='red')
-        plt.plot([0, baseline], [len(self.acc['train']), baseline], color='black',
+        plt.plot([0, len(self.acc['train'])], [baseline, baseline], color='black',
                  linestyle='--', label='%f baseline' % baseline)
         plt.xlabel('epoch')
         plt.title('accuracy')
@@ -142,8 +142,8 @@ class TransferModel:
             f.write(cur_vall_acc)
             if self.test_acc > 0.0:
                 f.write("test_acc %f\n" % self.test_acc)
-            if self.test4_acc > 0.0:
-                f.write("test_4acc %f\n" % self.test4_acc)
+            if self.test2_acc > 0.0:
+                f.write("test_4acc %f\n" % self.test2_acc)
             np.save(self.path_model + "histograms", np.asarray(self.histograms))
 
         self.model.save(self.path_model + 'model.h5')
