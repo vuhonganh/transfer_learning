@@ -6,18 +6,17 @@ def plot_history(history):
     # list all data in history
     #print(history.history.keys())
 
+    y1_1 = history['loss']
+    y1_2 = history['val_loss']
 
-    y1_1 = history.history['loss']
-    y1_2 = history.history['val_loss']
-
-    f, axarr = plt.subplots(2, sharex=True)
+    fig, axarr = plt.subplots(nrows=2, sharex=True)
     axarr[0].plot(y1_1, label='train')
     axarr[0].plot(y1_2, label='val')
     axarr[0].set_title('loss')
     axarr[0].legend(loc='upper right')
 
-    y2_1 = history.history['acc']
-    y2_2 = history.history['val_acc']
+    y2_1 = history['acc']
+    y2_2 = history['val_acc']
     axarr[1].set_title('accuracy')
     axarr[1].plot(y2_1, label='train')
     axarr[1].plot(y2_2, label='val')
