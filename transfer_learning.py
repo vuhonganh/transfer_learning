@@ -201,7 +201,7 @@ def compute_accuracy(integer_label, predictions, cur_classes=classes, debug=True
 
 
 def test_from_reader_data(x_test, y_test, model):
-    predictions = model.predict(x_test, batch_size=64, verbose=1)
+    predictions = model.predict(x_test, batch_size=48, verbose=1)
     integer_label = np.argmax(y_test, axis=1)
     classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
                       "banana", "key", "mug", "pear", "orange"]

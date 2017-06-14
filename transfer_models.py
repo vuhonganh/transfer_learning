@@ -2,7 +2,7 @@ import keras
 from keras import backend as K
 from keras.models import Sequential
 from keras.layers import Activation, Dropout, Flatten, Dense
-import matplotlib.pyplot as plt
+
 
 import os
 
@@ -106,30 +106,3 @@ def build_model(model, learning_rate=1e-4):
                   optimizer=adam_opt,
                   metrics=['accuracy'])
     return model
-
-
-def plot_history(history):
-    # list all data in history
-    print(history.history.keys())
-    # summarize history for accuracy
-    plt.figure(1)
-    plt.subplot(121)
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper left')
-    # prefix_file_name = strftime("%Y-%m-%d-%H:%M:%S", gmtime())
-
-    plt.subplot(122)
-    #plt.show()
-    # summarize history for loss
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper left')
-    # plt.savefig(prefix_file_name + ".png")
-    plt.show()
