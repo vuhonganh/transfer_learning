@@ -23,7 +23,7 @@ def plot_history(history):
     plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper left')
+    plt.legend(['train', 'test'], loc='lower right')
 
     # prefix_file_name = strftime("%Y-%m-%d-%H:%M:%S", gmtime())
     # plt.savefig(prefix_file_name + ".png")
