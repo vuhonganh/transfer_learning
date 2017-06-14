@@ -54,11 +54,13 @@ def compute_accuracy(integer_label, predictions, cur_classes, debug=True):
     return cnt / predictions.shape[0], cnt_top_3 / predictions.shape[0]
 
 
-def test_from_reader_data(x_test, y_test, model):
+classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
+                  "banana", "key", "mug", "pear", "orange"]
+
+
+def test_from_reader_data(x_test, y_test, model, classes=classes_reader):
     predictions = model.predict(x_test, batch_size=48, verbose=1)
     integer_label = np.argmax(y_test, axis=1)
-    classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
-                      "banana", "key", "mug", "pear", "orange"]
-    acc, acc_3 = compute_accuracy(integer_label, predictions, cur_classes=classes_reader, debug=False)
+    acc, acc_3 = compute_accuracy(integer_label, predictions, cur_classes=classes, debug=False)
     print("top 1 accuracy = %f" % acc)
     print("top 3 accuracy = %f" % acc_3)
