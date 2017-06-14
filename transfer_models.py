@@ -1,106 +1,221 @@
 import keras
-from keras import backend as K
 from keras.models import Sequential
 from keras.layers import Activation, Dropout, Flatten, Dense
-
-
 import os
+import matplotlib.pyplot as plt
+from time import gmtime, strftime
+import numpy as np
 
 base_model_dict = {"resnet": keras.applications.ResNet50,
                    "inception": keras.applications.InceptionV3,
                    "vgg": keras.applications.VGG16,
                    "xception": keras.applications.Xception}
 
-fine_tune_dict = {"resnet": -33,
-                  "vgg": -4,
-                  "inception": -62,
-                  "xception": -15}
+# number of layers until last feature conv-block
+fine_tune_dict = {"resnet": 142,
+                  "vgg": 15,
+                  "inception": 249,
+                  "xception": 117}
 
-if K.image_data_format() == 'channels_first':
-    default_input_shape = (3, 224, 224)
-else:
-    default_input_shape = (224, 224, 3)
+class TransferModel:
+    def __init__(self, base_model_name, hidden_list, lr=1e-4, num_classes=12, dropout_list=None,
+                 reg_list=None, init='he_normal', verbose=True, input_shape=(224, 224, 3)):
+
+        if base_model_name not in base_model_dict:
+            print("unknown model name, use resnet as default")
+            base_model_name = "resnet"
+
+        self.base_model_name = base_model_name
+        # get base model and freeze all layers
+        self.base_model = get_base_model(self.base_model_name, input_shape)
+        # number of layers in base model
+        self.nb_conv_layers = len(self.base_model.layers)
+        # get fc model
+        self.fc_model = get_fc(hidden_list, self.base_model, num_classes, dropout_list, reg_list, init, verbose)
+        self.lr = lr
+        self.model = build_classification_model(self.base_model, self.fc_model, self.lr)
+
+        self.path_model = create_path_model(self.base_model_name, hidden_list)
+        os.makedirs(self.path_model, exist_ok=True)
+        self.loss = {'train': [], 'val': []}
+        self.acc = {'train': [], 'val': []}
+        self.histograms = []
+        self.test_acc = 0.0
+        self.test4_acc = 0.0
+
+    def set_fine_tune(self, new_lr=None):
+        """
+        set final layers to trainable and reset learning rate         
+        """
+        if new_lr is not None:
+            self.lr = new_lr
+        else:
+            self.lr /= 10.0
+        # unfreeze final layers
+        for layer in self.base_model.layers[fine_tune_dict[self.base_model_name]:]:
+            layer.trainable = True
+        # rebuild model:
+        self.model = build_classification_model(self.base_model, self.fc_model, self.lr)
+
+    def set_model_from_file(self, model_file_path):
+        self.model = get_model_from_file(model_file_path)
+
+    def fit(self, x_train, y_train, x_val, y_val, bs=48, epos=25, verbose=2):
+        lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
+                                                           verbose=1, mode='auto',
+                                                           epsilon=0.0001, cooldown=0, min_lr=1e-6)
+
+        history = self.model.fit(x_train, y_train, batch_size=bs, epochs=epos, verbose=verbose,
+                                 validation_data=(x_val, y_val), callbacks=[lrPlatCallBack])
+
+        self.loss['train'] += history.history['loss']
+        self.loss['val'] += history.history['val_loss']
+        self.acc['train'] += history.history['acc']
+        self.acc['val'] += history.history['val_acc']
+
+    def evaluate(self, x_test, y_test):
+        predictions = self.model.predict(x_test, batch_size=48, verbose=1)
+        integer_label = np.argmax(y_test, axis=1)
+        # classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
+        #                   "banana", "key", "mug", "pear", "orange"]
+        cnt = 0
+        cnt_top_4 = 0
+        nb_bin = 10
+        hist_range = 1.0 / nb_bin
+        histo = np.zeros(10)
+
+        for i in range(predictions.shape[0]):
+            preds = np.argsort(predictions[i])[::-1][0:4]
+            for p in preds:
+                if p == integer_label[i]:
+                    cnt_top_4 += 1
+                for k in range(nb_bin):
+                    if k * hist_range <= predictions[i][p] < (k+1) * hist_range:
+                        histo[k] += 1
+            if preds[0] == integer_label[i]:
+                cnt += 1
+        acc = cnt / predictions.shape[0]
+        acc_4 = cnt_top_4 / predictions.shape[0]
+        self.test_acc = acc
+        self.test4_acc = acc_4
+        self.histograms.append(histo)
+        print("top 1 accuracy = %f" % acc)
+        print("top 4 accuracy = %f" % acc_4)
+
+    def plot_acc(self, baseline=0.9, savefig=False):
+        plt.plot(self.acc['train'], label='train', color='blue')
+        plt.plot(self.acc['val'], label='val', color='red')
+        plt.plot([0, baseline], [len(self.acc['train']), baseline], color='black',
+                 linestyle='--', label='%f baseline' % baseline)
+        plt.xlabel('epoch')
+        plt.title('accuracy')
+        plt.legend(loc='lower right')
+        if savefig:
+            plt.savefig(self.path_model + 'acc.png')
+        else:
+            plt.show(block=False)
+
+    def plot_loss(self, savefig=False):
+        plt.plot(self.loss['train'], label='train', color='blue')
+        plt.plot(self.loss['val'], label='val', color='red')
+        plt.xlabel('epoch')
+        plt.title('loss')
+        plt.legend(loc='upper right')
+        if savefig:
+            plt.savefig(self.path_model + 'loss.png')
+        else:
+            plt.show(block=False)
+
+    def save_model(self):
+        with open(self.path_model + "params.txt", mode='w') as f:
+            cur_date_time = strftime("date %Y_%m_%d_%H_%M_%S\n", gmtime())
+            cur_lr = "lr %f\n" % self.lr
+            cur_train_loss = get_string_from_arr("train_loss", self.loss['train'])
+            cur_val_loss = get_string_from_arr("val_loss", self.loss['val'])
+            cur_train_acc = get_string_from_arr("train_acc", self.acc['train'])
+            cur_vall_acc = get_string_from_arr("val_acc", self.acc['val'])
+            f.write(cur_date_time)
+            f.write(cur_lr)
+            f.write(cur_train_loss)
+            f.write(cur_val_loss)
+            f.write(cur_train_acc)
+            f.write(cur_vall_acc)
+            if self.test_acc > 0.0:
+                f.write("test_acc %f\n" % self.test_acc)
+            if self.test4_acc > 0.0:
+                f.write("test_4acc %f\n" % self.test4_acc)
+            np.save(self.path_model + "histograms", np.asarray(self.histograms))
+
+        self.model.save(self.path_model + 'model.h5')
+        self.plot_loss(savefig=True)
+        self.plot_acc(savefig=True)
 
 
-def get_fc(base_model, list_hidden_dropout, initialier='he_normal', reg=1e-2, num_classes=12, verbose=True):
-    """
-    build a fc on top of base model
-    :param base_model: conv-model used to transfer learning (vgg, resnet, etc.)
-    :param list_hidden_dropout: a list of (hidden_size, dropout_keep_prob)
-    :param initialier: how to initialize weights
-    :param reg: l2 regularizer factors for weights and biases
-    :param num_classes: number of classes to classify
-    :param verbose: print out initializer and regularizer detail
-    :return: fc model
-    """
+def get_string_from_arr(first_word, arr):
+    res = first_word
+    for a in arr:
+        res += ' ' + str(a)
+    res += '\n'
+    return res
+
+
+def create_path_model(base_model_name, hidden_list):
+    res = base_model_name
+    for h in hidden_list:
+        res += '_' + str(h)
+    res += '/'
+    return res
+
+def get_fc(hidden_list, base_model, num_classes=12, dropout_list=None, reg_list=None, init='he_normal', verbose=True):
+    """build a fc on top of base model"""
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
 
+    len_hidden = len(hidden_list)
     if verbose:
-        print("initializer = %s and l2 regularizer reg = %f" % (initialier, reg))
+        print("initializer = %s" % init)
     # add hidden layers
-    for hidden_size, do_keep_prob in list_hidden_dropout:
-        fc_model.add(Dense(hidden_size, activation='relu', kernel_initializer=initialier,
-                           kernel_regularizer=keras.regularizers.l2(reg)))
-        fc_model.add(Dropout(do_keep_prob))
-        if verbose:
-            print("added fc-%d with dropout keep probability %f" % (hidden_size, do_keep_prob))
+    if dropout_list is None:
+        dropout_list = [0.5] * len_hidden
+    if reg_list is None:
+        reg_list = [5e-3] * len_hidden
 
+    for i in range(len_hidden):
+        fc_model.add(Dense(hidden_list[i], activation='relu', kernel_initializer=init,
+                                kernel_regularizer=keras.regularizers.l2(reg_list[i])))
+        fc_model.add(Dropout(dropout_list[i]))
+        if verbose:
+            print("added fc-%d, dropout keep prob %f, l2 reg %f" % (hidden_list[i], dropout_list[i], reg_list[i]))
     # do softmax at final layer
     fc_model.add(Dense(num_classes))
     fc_model.add(Activation('softmax'))
     return fc_model
 
 
-def get_base_model(base_model_name="resnet", fine_tune=False, input_shape=default_input_shape, verbose=True):
+def get_base_model(base_model_name, input_shape=(224, 224, 3)):
     """
-    return base model (the conv-net) with or without fine-tune (depends on user's params) 
-    :param base_model_name: the conv-net model
-    :param fine_tune: if set to True then set last conv-net of base model to be trainable
-    :return: base_model
+    return base model without top, freeze all conv-layers
     """
-    if base_model_name not in base_model_dict:
-        print("unknown model name, use resnet as default")
-        base_model_name = "resnet"
     base_model = base_model_dict[base_model_name](include_top=False, weights='imagenet', input_shape=input_shape)
-    if fine_tune:
-        if verbose:
-            print("fine tune %d final layers in conv-net of %s" % (-fine_tune_dict[base_model_name],
-                                                                   base_model_name))
-        for layer in base_model.layers[:fine_tune_dict[base_model_name]]:
-            layer.trainable = False
-    else:
-        for layer in base_model.layers:
-            layer.trainable = False
+    for layer in base_model.layers:
+        layer.trainable = False
 
     return base_model
 
 
-def get_model(list_hidden_dropout, initialier='he_normal', reg=1e-2, num_classes=12,
-              base_model_name="resnet", fine_tune=False, input_shape=default_input_shape, verbose=True):
-    base_model = get_base_model(base_model_name, fine_tune, input_shape, verbose)
-    fc_model = get_fc(base_model, list_hidden_dropout, initialier, reg, num_classes, verbose)
-    model = keras.models.Model(input=base_model.input, output=fc_model(base_model.output))
-    return model
-
-
 def get_model_from_file(whole_model_file_path):
-    if os.path.isfile(whole_model_file_path):
+    try:
         print("load model from file %s" % whole_model_file_path)
         model = keras.models.load_model(whole_model_file_path)
         return model
-    else:
+    except FileNotFoundError:
         print("No model found at %s" % whole_model_file_path)
-        raise ValueError
 
-
-def build_model(model, learning_rate=1e-4):
+def build_classification_model(base_model, fc_model, learning_rate=1e-4):
     """
-    create Adam optimizer and compile model
-    :param model:  
-    :param learning_rate:
-    :return: compiled model 
+    build classification model = base+fc, use Adam optimizer  
     """
+    model = keras.models.Model(inputs=base_model.input, outputs=fc_model(base_model.output))
     adam_opt = keras.optimizers.Adam(lr=learning_rate)
     model.compile(loss='categorical_crossentropy',
                   optimizer=adam_opt,
