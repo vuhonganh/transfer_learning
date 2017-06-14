@@ -6,6 +6,24 @@ def plot_history(history):
     # list all data in history
     #print(history.history.keys())
 
+
+    y1_1 = history.history['loss']
+    y1_2 = history.history['val_loss']
+
+    f, axarr = plt.subplots(2, sharex=True)
+    axarr[0].plot(y1_1, label='train')
+    axarr[0].plot(y1_2, label='val')
+    axarr[0].set_title('loss')
+    axarr[0].legend(loc='upper right')
+
+    y2_1 = history.history['acc']
+    y2_2 = history.history['val_acc']
+    axarr[1].set_title('accuracy')
+    axarr[1].plot(y2_1, label='train')
+    axarr[1].plot(y2_2, label='val')
+    axarr[1].legend(loc='lower right')
+    print("new version")
+    '''
     # summarize history for loss
     plt.figure(1)
     plt.subplot(121)
@@ -24,10 +42,10 @@ def plot_history(history):
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='lower right')
-
+    '''
     # prefix_file_name = strftime("%Y-%m-%d-%H:%M:%S", gmtime())
     # plt.savefig(prefix_file_name + ".png")
-    plt.show()
+    # plt.show()
 
 
 def compute_accuracy(integer_label, predictions, cur_classes, debug=True):
