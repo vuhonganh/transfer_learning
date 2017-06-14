@@ -114,8 +114,9 @@ class TransferModel:
     def plot_acc(self, baseline=0.9, savefig=False):
         plt.plot(self.acc['train'], label='train', color='blue')
         plt.plot(self.acc['val'], label='val', color='red')
+        bl_str = '%.2f baseline' % baseline
         plt.plot([0, len(self.acc['train'])], [baseline, baseline], color='black',
-                 linestyle='--', label='%.2f baseline' % baseline)
+                 linestyle='--', label=bl_str)
         plt.xlabel('epoch')
         plt.title('accuracy')
         plt.legend(loc='lower right')
