@@ -143,7 +143,7 @@ class TransferModel:
             if self.test_acc > 0.0:
                 f.write("test_acc %f\n" % self.test_acc)
             if self.test2_acc > 0.0:
-                f.write("test_4acc %f\n" % self.test2_acc)
+                f.write("test_2acc %f\n" % self.test2_acc)
             np.save(self.path_model + "histograms", np.asarray(self.histograms))
 
         self.model.save(self.path_model + 'model.h5')
