@@ -21,30 +21,19 @@ def plot_history(history):
     axarr[1].plot(y2_1, label='train')
     axarr[1].plot(y2_2, label='val')
     axarr[1].legend(loc='lower right')
-    print("new version")
-    '''
-    # summarize history for loss
-    plt.figure(1)
-    plt.subplot(121)
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper right')
-
-    # summarize history for accuracy
-    plt.subplot(122)
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='lower right')
-    '''
     # prefix_file_name = strftime("%Y-%m-%d-%H:%M:%S", gmtime())
     # plt.savefig(prefix_file_name + ".png")
     # plt.show()
+
+
+def plot_accuracy(history):
+    train_acc = history['acc']
+    val_acc = history['val_acc']
+    plt.plot(train_acc, label='train')
+    plt.plot(val_acc, label='val')
+    plt.legend(loc='lower right')
+    plt.axhline(0.9, linestyle='--', label='90% base line')
+    plt.show()
 
 
 def compute_accuracy(integer_label, predictions, cur_classes, debug=True):
@@ -81,3 +70,8 @@ def test_from_reader_data(x_test, y_test, model, classes=classes_reader):
     acc, acc_3 = compute_accuracy(integer_label, predictions, cur_classes=classes, debug=False)
     print("top 1 accuracy = %f" % acc)
     print("top 3 accuracy = %f" % acc_3)
+
+
+if __name__ == "__main__":
+    test = {'acc':[0.4, 0.5, 0.6, 0.9, 0.95], 'val_acc':[0.2, 0.24, 0.5, 0.67, 0.85]}
+    plot_accuracy(test)
