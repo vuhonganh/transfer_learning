@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from time import gmtime, strftime
 import numpy as np
 
+import matplotlib
+from matplotlib.ticker import FuncFormatter
+
 base_model_dict = {"resnet": keras.applications.ResNet50,
                    "inception": keras.applications.InceptionV3,
                    "vgg": keras.applications.VGG16,
@@ -40,17 +43,22 @@ class TransferModel:
         self.loss = {'train': [], 'val': []}
         self.acc = {'train': [], 'val': []}
         self.histograms = []
+        self.histograms_epochs = []
         self.test_acc = 0.0
         self.test2_acc = 0.0
+        self.cur_epoch = 0
+
+    def set_lr(self, new_lr):
+        if new_lr is not None:
+            self.lr = new_lr
+        else:
+            self.lr /= 10.0
 
     def set_fine_tune(self, new_lr=None):
         """
         set final layers to trainable and reset learning rate         
         """
-        if new_lr is not None:
-            self.lr = new_lr
-        else:
-            self.lr /= 10.0
+        self.set_lr(new_lr)
         # unfreeze final layers
         for layer in self.base_model.layers[fine_tune_dict[self.base_model_name]:]:
             layer.trainable = True
@@ -67,7 +75,7 @@ class TransferModel:
 
         history = self.model.fit(x_train, y_train, batch_size=bs, epochs=epos, verbose=verbose,
                                  validation_data=(x_val, y_val), callbacks=[lrPlatCallBack])
-
+        self.cur_epoch += epos
         self.loss['train'] += history.history['loss']
         self.loss['val'] += history.history['val_loss']
         self.acc['train'] += history.history['acc']
@@ -82,7 +90,7 @@ class TransferModel:
         cnt_top_2 = 0
         nb_bin = 10
         hist_range = 1.0 / nb_bin
-        histo = np.zeros(10)
+        histo = []
 
         for i in range(predictions.shape[0]):
             preds = np.argsort(predictions[i])[::-1][0:2]
@@ -91,7 +99,7 @@ class TransferModel:
                     cnt_top_2 += 1
                 for k in range(nb_bin):
                     if k * hist_range <= predictions[i][p] < (k+1) * hist_range:
-                        histo[k] += 1
+                        histo.append((k + 0.5) * hist_range)
             if preds[0] == integer_label[i]:
                 cnt += 1
         acc = cnt / predictions.shape[0]
@@ -99,6 +107,7 @@ class TransferModel:
         self.test_acc = acc
         self.test2_acc = acc_2
         self.histograms.append(histo)
+        self.histograms_epochs.append(self.cur_epoch)
         print("top 1 accuracy = %f" % acc)
         print("top 2 accuracy = %f" % acc_2)
 
@@ -106,7 +115,7 @@ class TransferModel:
         plt.plot(self.acc['train'], label='train', color='blue')
         plt.plot(self.acc['val'], label='val', color='red')
         plt.plot([0, len(self.acc['train'])], [baseline, baseline], color='black',
-                 linestyle='--', label='%f baseline' % baseline)
+                 linestyle='--', label='%.2f baseline' % baseline)
         plt.xlabel('epoch')
         plt.title('accuracy')
         plt.legend(loc='lower right')
@@ -149,6 +158,23 @@ class TransferModel:
         self.model.save(self.path_model + 'model.h5')
         self.plot_loss(savefig=True)
         self.plot_acc(savefig=True)
+
+    def plot_histograms(self, bins=np.linspace(0, 1, 10), savefig=False):
+        names = ['%d epochs' % (i + 1) for i in range(len(self.histograms))]
+        plt.hist(self.histograms, bins=bins, normed=True, label=names)
+
+        # Create the formatter using the function to_percent. This multiplies all the
+        # default labels by 100, making them all percentages
+        formatter = FuncFormatter(to_percent)
+        plt.xlim([-0.1, 1.4])
+        # Set the formatter
+        plt.gca().yaxis.set_major_formatter(formatter)
+        plt.legend(loc='upper right')
+        plt.title('histogram of top 2 accuracies by number of epochs')
+        if savefig:
+            plt.savefig(self.path_model + 'hist.png')
+        else:
+            plt.show(block=False)
 
 
 def get_string_from_arr(first_word, arr):
@@ -221,3 +247,14 @@ def build_classification_model(base_model, fc_model, learning_rate=1e-4):
                   optimizer=adam_opt,
                   metrics=['accuracy'])
     return model
+
+
+def to_percent(y, position):
+    # Ignore the passed in position. This has the effect of scaling the default
+    # tick locations.
+    s = str(10 * y)
+    # The percent symbol needs escaping in latex
+    if matplotlib.rcParams['text.usetex'] is True:
+        return s + r'$\%$'
+    else:
+        return s + '%'
