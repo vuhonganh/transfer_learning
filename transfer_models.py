@@ -159,9 +159,10 @@ class TransferModel:
         self.model.save(self.path_model + 'model.h5')
         self.plot_loss(savefig=True)
         self.plot_acc(savefig=True)
+        self.plot_histograms(savefig=True)
 
     def plot_histograms(self, bins=np.linspace(0, 1, 10), savefig=False):
-        names = ['%d epochs' % (i + 1) for i in range(len(self.histograms))]
+        names = ['%d epochs' % i for i in self.histograms_epochs]
         plt.hist(self.histograms, bins=bins, normed=True, label=names)
 
         # Create the formatter using the function to_percent. This multiplies all the
