@@ -79,15 +79,8 @@ class TransferModel:
             weight_file_path = self.path_model + "weight.h5"
         self.model.load_weights(weight_file_path)
 
-    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2, train_mean=None, train_std=None):
-        if train_mean is not None:
-            x_train -= train_mean
-            x_val -= train_mean
-        if train_std is not None:
-            x_train /= train_std
-            x_val /= train_std
+    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2):
         callBackList = get_call_backs()
-
         history = self.model.fit(x_train, y_train, batch_size=bs, epochs=epos, verbose=verbose,
                                  validation_data=(x_val, y_val), callbacks=callBackList)
         self.update_from_history(history, epos)
@@ -95,31 +88,10 @@ class TransferModel:
     def fit_aug(self, x_train, y_train, x_val, y_val, bs=96, epos=30, verbose=2):
         callBackList = get_call_backs()
         train_gen, val_gen = get_gen(x_train)
-        steps_per_ep = len(x_train) / bs
-        val_steps = len(x_val) / bs
-
         history = self.model.fit_generator(train_gen.flow(x_train, y_train, batch_size=bs),
-                                           steps_per_epoch=steps_per_ep, epochs=epos,
+                                           steps_per_epoch=len(x_train) / bs, epochs=epos,
                                            validation_data=val_gen.flow(x_val, y_val, batch_size=bs),
-                                           validation_steps=val_steps,
-                                           verbose=verbose, callbacks=callBackList)
-        self.update_from_history(history, epos)
-
-    def fit_aug_2(self, x_train, y_train, x_val, y_val, bs=96, epos=30, verbose=2):
-        train_gen, val_gen, train_mean, train_std = get_gen_2(x_train)
-        x_train -= train_mean
-        x_train /= train_std
-        x_val -= train_mean
-        x_val /= train_std
-
-        steps_per_ep = len(x_train) / bs
-        val_steps = len(x_val) / bs
-
-        callBackList = get_call_backs()
-        history = self.model.fit_generator(train_gen.flow(x_train, y_train, batch_size=bs),
-                                           steps_per_epoch=steps_per_ep, epochs=epos,
-                                           validation_data=val_gen.flow(x_val, y_val, batch_size=bs),
-                                           validation_steps=val_steps,
+                                           validation_steps=len(x_val) / bs,
                                            verbose=verbose, callbacks=callBackList)
         self.update_from_history(history, epos)
 
@@ -130,12 +102,7 @@ class TransferModel:
         self.acc['train'] += history.history['acc']
         self.acc['val'] += history.history['val_acc']
 
-    def evaluate(self, x_test, y_test, train_mean=None, train_std=None):
-        if train_mean is not None:
-            x_test -= train_mean
-        if train_std is not None:
-            x_test /= train_std
-
+    def evaluate(self, x_test, y_test):
         predictions = self.model.predict(x_test, batch_size=48, verbose=1)
         integer_label = np.argmax(y_test, axis=1)
         # classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
