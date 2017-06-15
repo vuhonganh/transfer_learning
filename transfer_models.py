@@ -1,6 +1,7 @@
 import keras
 from keras.models import Sequential
-from keras.layers import Activation, Dropout, Flatten, Dense, AveragePooling2D
+from keras.layers import Activation, Dropout, Flatten, Dense
+from keras.preprocessing.image import ImageDataGenerator
 import os
 import matplotlib.pyplot as plt
 from time import gmtime, strftime
@@ -77,18 +78,44 @@ class TransferModel:
             weight_file_path = self.path_model + "weight.h5"
         self.model.load_weights(weight_file_path)
 
-    def fit(self, x_train, y_train, x_val, y_val, bs=48, epos=25, verbose=2):
+    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2):
+        earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4,
+                                                          verbose=1, mode='auto')
+
         lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
                                                            verbose=1, mode='auto',
                                                            epsilon=0.0001, cooldown=0, min_lr=1e-6)
 
         history = self.model.fit(x_train, y_train, batch_size=bs, epochs=epos, verbose=verbose,
-                                 validation_data=(x_val, y_val), callbacks=[lrPlatCallBack])
+                                 validation_data=(x_val, y_val), callbacks=[lrPlatCallBack, earlyStopCallBack])
+        self.update_from_history(history, epos)
+
+    def fit_aug(self, x_train, y_train, x_val, y_val, bs=96, epos=30, verbose=2):
+        earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4,
+                                                          verbose=1, mode='auto')
+
+        lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
+                                                           verbose=1, mode='auto',
+                                                           epsilon=0.0001, cooldown=0, min_lr=1e-6)
+
+        train_gen, val_gen = get_gen(x_train)
+        steps_per_ep = len(x_train) / bs
+        val_steps = len(x_val) / bs
+
+        history = self.model.fit_generator(train_gen.flow(x_train, y_train, batch_size=bs),
+                                           steps_per_epoch=steps_per_ep, epochs=epos,
+                                           validation_data=val_gen.flow(x_val, y_val, batch_size=bs),
+                                           validation_steps=val_steps,
+                                           verbose=verbose, callbacks=[lrPlatCallBack, earlyStopCallBack])
+        self.update_from_history(history, epos)
+
+    def update_from_history(self, history, epos):
         self.cur_epoch += epos
         self.loss['train'] += history.history['loss']
         self.loss['val'] += history.history['val_loss']
         self.acc['train'] += history.history['acc']
         self.acc['val'] += history.history['val_acc']
+
 
     def evaluate(self, x_test, y_test):
         predictions = self.model.predict(x_test, batch_size=48, verbose=1)
@@ -307,3 +334,19 @@ def compare_models(list_models):
     plt.legend()
     plt.show(block=False)
     print("best model %s with test accuracy %f" % (max_test_model_name, max_test_acc))
+
+
+def get_gen(x_train):
+    train_datagen = ImageDataGenerator(
+        rescale=1. / 255,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        shear_range=0.1,
+        zoom_range=0.1,
+        rotation_range=20,
+        horizontal_flip=True)
+    val_datagen = ImageDataGenerator(rescale=1. / 255)
+
+    train_datagen.fit(x_train)
+    return train_datagen, val_datagen
+
