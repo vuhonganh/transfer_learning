@@ -1,6 +1,6 @@
 import keras
 from keras.models import Sequential
-from keras.layers import Activation, Dropout, Flatten, Dense
+from keras.layers import Activation, Dropout, Flatten, Dense, AveragePooling2D
 import os
 import matplotlib.pyplot as plt
 from time import gmtime, strftime
@@ -226,6 +226,8 @@ def get_fc(hidden_list, base_model, num_classes=12, dropout_list=None, reg_list=
     """build a fc on top of base model"""
     fc_model = Sequential()
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
+    
+    fc_model.add(AveragePooling2D(pool_size=(7, 7), strides=(7, 7)))
 
     len_hidden = len(hidden_list)
     if verbose:
@@ -295,9 +297,15 @@ def to_percent(y, position):
         return s + '%'
 
 
-def compare_accs(list_models):
+def compare_models(list_models):
     plt.clf()
+    max_test_acc = 0.0
+    max_test_model_name = ''
     for m in list_models:
-        plt.plot(m.acc['val'], label='m.model_name')
+        plt.plot(m.acc['val'], label=m.model_name)
+        if m.test_acc > max_test_acc:
+            max_test_model_name = m.model_name
+            max_test_acc = m.test_acc
     plt.legend()
     plt.show(block=False)
+    print("best model %s with test accuracy %f" % (max_test_model_name, max_test_acc))
