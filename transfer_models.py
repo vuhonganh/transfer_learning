@@ -20,6 +20,7 @@ fine_tune_dict = {"resnet": 142,
                   "inception": 249,
                   "xception": 117}
 
+
 class TransferModel:
     def __init__(self, base_model_name, hidden_list, lr=1e-4, num_classes=12, dropout_list=None,
                  reg_list=None, init='he_normal', verbose=True, input_shape=(224, 224, 3)):
@@ -32,7 +33,7 @@ class TransferModel:
         # get base model and freeze all layers
         self.base_model = get_base_model(self.base_model_name, input_shape)
         # number of layers in base model
-        self.nb_conv_layers = len(self.base_model.layers)
+        # self.nb_conv_layers = len(self.base_model.layers)
         # get fc model
         self.fc_model = get_fc(hidden_list, self.base_model, num_classes, dropout_list, reg_list, init, verbose)
         self.lr = lr
@@ -47,6 +48,7 @@ class TransferModel:
         self.test_acc = 0.0
         self.test2_acc = 0.0
         self.cur_epoch = 0
+        self.model_name = get_string_from_arr(self.base_model_name, hidden_list, sep='_')
 
     def set_lr(self, new_lr):
         if new_lr is not None:
@@ -60,13 +62,21 @@ class TransferModel:
         """
         self.set_lr(new_lr)
         # unfreeze final layers
-        for layer in self.base_model.layers[fine_tune_dict[self.base_model_name]:]:
+        for layer in self.model.layers[fine_tune_dict[self.base_model_name]:]:
             layer.trainable = True
-        # rebuild model:
-        self.model = build_classification_model(self.base_model, self.fc_model, self.lr)
+        self.model.compile()
+        # recompile model with new learning rate:
+        self.model = compiled_model(self.model, self.lr)
 
-    def set_model_from_file(self, model_file_path):
-        self.model = get_model_from_file(model_file_path)
+    def load(self, model_file_path=None, weight_file_path=None):
+        # first load model, i.e. load the architecture
+        if model_file_path is None:
+            model_file_path = self.path_model + "model.h5"
+        self.model = keras.models.load_model(model_file_path)
+        # second load weights
+        if weight_file_path is None:
+            weight_file_path = self.path_model + "weight.h5"
+        self.model.load_weights(weight_file_path)
 
     def fit(self, x_train, y_train, x_val, y_val, bs=48, epos=25, verbose=2):
         lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
@@ -120,7 +130,7 @@ class TransferModel:
         plt.plot([0, len(self.acc['train'])], [baseline, baseline], color='black',
                  linestyle='--', label=bl_str)
         plt.xlabel('epoch')
-        plt.title('accuracy')
+        plt.title('accuracy of %s' % self.model_name)
         plt.legend(loc='lower right')
         if savefig:
             plt.savefig(self.path_model + 'acc.png')
@@ -133,14 +143,14 @@ class TransferModel:
         plt.plot(self.loss['train'], label='train', color='blue')
         plt.plot(self.loss['val'], label='val', color='red')
         plt.xlabel('epoch')
-        plt.title('loss')
+        plt.title('loss of %s' % self.model_name)
         plt.legend(loc='upper right')
         if savefig:
             plt.savefig(self.path_model + 'loss.png')
         else:
             plt.show(block=False)
 
-    def save_model(self):
+    def save(self):
         with open(self.path_model + "params.txt", mode='w') as f:
             cur_date_time = strftime("date %Y_%m_%d_%H_%M_%S\n", gmtime())
             cur_lr = "lr %f\n" % self.lr
@@ -161,11 +171,14 @@ class TransferModel:
             np.save(self.path_model + "histograms", np.asarray(self.histograms))
 
         self.model.save(self.path_model + 'model.h5')
+        self.model.save_weights(self.path_model + 'weight.h5')
         self.plot_loss(savefig=True)
         self.plot_acc(savefig=True)
         self.plot_histograms(savefig=True)
 
     def plot_histograms(self, bins=np.linspace(0, 1, 10), savefig=False):
+        if len(self.histograms_epochs) == 0:
+            return
         names = ['%d epochs' % i for i in self.histograms_epochs]
         # clear plot first
         plt.clf()
@@ -178,17 +191,25 @@ class TransferModel:
         # Set the formatter
         plt.gca().yaxis.set_major_formatter(formatter)
         plt.legend(loc='upper right')
-        plt.title('histogram of top 2 accuracies by number of epochs')
+        plt.title('top2 histogram of %s' % self.model_name)
         if savefig:
             plt.savefig(self.path_model + 'hist.png')
         else:
             plt.show(block=False)
 
+    def plot(self, l=1, a=1, h=1):
+        if l:
+            self.plot_loss()
+        if a:
+            self.plot_acc()
+        if h:
+            self.plot_histograms()
 
-def get_string_from_arr(first_word, arr):
+
+def get_string_from_arr(first_word, arr, sep=' '):
     res = first_word
     for a in arr:
-        res += ' ' + str(a)
+        res += sep + str(a)
     res += '\n'
     return res
 
@@ -199,6 +220,7 @@ def create_path_model(base_model_name, hidden_list):
         res += '_' + str(h)
     res += '/'
     return res
+
 
 def get_fc(hidden_list, base_model, num_classes=12, dropout_list=None, reg_list=None, init='he_normal', verbose=True):
     """build a fc on top of base model"""
@@ -245,11 +267,16 @@ def get_model_from_file(whole_model_file_path):
     except FileNotFoundError:
         print("No model found at %s" % whole_model_file_path)
 
+
 def build_classification_model(base_model, fc_model, learning_rate=1e-4):
     """
     build classification model = base+fc, use Adam optimizer  
     """
     model = keras.models.Model(inputs=base_model.input, outputs=fc_model(base_model.output))
+    return compiled_model(model, learning_rate)
+
+
+def compiled_model(model, learning_rate):
     adam_opt = keras.optimizers.Adam(lr=learning_rate)
     model.compile(loss='categorical_crossentropy',
                   optimizer=adam_opt,
@@ -266,3 +293,11 @@ def to_percent(y, position):
         return s + r'$\%$'
     else:
         return s + '%'
+
+
+def compare_accs(list_models):
+    plt.clf()
+    for m in list_models:
+        plt.plot(m.acc['val'], label='m.model_name')
+    plt.legend()
+    plt.show(block=False)
