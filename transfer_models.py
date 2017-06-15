@@ -130,7 +130,12 @@ class TransferModel:
         self.acc['train'] += history.history['acc']
         self.acc['val'] += history.history['val_acc']
 
-    def evaluate(self, x_test, y_test):
+    def evaluate(self, x_test, y_test, train_mean=None, train_std=None):
+        if train_mean is not None:
+            x_test -= train_mean
+        if train_std is not None:
+            x_test /= train_std
+
         predictions = self.model.predict(x_test, batch_size=48, verbose=1)
         integer_label = np.argmax(y_test, axis=1)
         # classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
