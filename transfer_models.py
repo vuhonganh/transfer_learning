@@ -224,10 +224,10 @@ def create_path_model(base_model_name, hidden_list):
 
 def get_fc(hidden_list, base_model, num_classes=12, dropout_list=None, reg_list=None, init='he_normal', verbose=True):
     """build a fc on top of base model"""
-    fc_model = Sequential()
+    fc_model = Sequential()    
     fc_model.add(Flatten(input_shape=base_model.output_shape[1:]))
     
-    fc_model.add(AveragePooling2D(pool_size=(7, 7), strides=(7, 7)))
+    #fc_model.add(AveragePooling2D(pool_size=(7, 7), strides=(7, 7)))  - incompatible, need to be added before fc
 
     len_hidden = len(hidden_list)
     if verbose:
