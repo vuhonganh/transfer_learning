@@ -112,6 +112,8 @@ class TransferModel:
         print("top 2 accuracy = %f" % acc_2)
 
     def plot_acc(self, baseline=0.9, savefig=False):
+        # clear plot first
+        plt.clf()
         plt.plot(self.acc['train'], label='train', color='blue')
         plt.plot(self.acc['val'], label='val', color='red')
         bl_str = '%.2f baseline' % baseline
@@ -126,6 +128,8 @@ class TransferModel:
             plt.show(block=False)
 
     def plot_loss(self, savefig=False):
+        # clear plot first
+        plt.clf()
         plt.plot(self.loss['train'], label='train', color='blue')
         plt.plot(self.loss['val'], label='val', color='red')
         plt.xlabel('epoch')
@@ -163,6 +167,8 @@ class TransferModel:
 
     def plot_histograms(self, bins=np.linspace(0, 1, 10), savefig=False):
         names = ['%d epochs' % i for i in self.histograms_epochs]
+        # clear plot first
+        plt.clf()
         plt.hist(self.histograms, bins=bins, normed=True, label=names)
 
         # Create the formatter using the function to_percent. This multiplies all the
