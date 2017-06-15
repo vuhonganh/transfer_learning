@@ -56,6 +56,7 @@ class TransferModel:
             self.lr = new_lr
         else:
             self.lr /= 10.0
+        print("set learning rate and recompile model")
         self.model = compiled_model(self.model, self.lr)
 
     def set_fine_tune(self, new_lr=None):
