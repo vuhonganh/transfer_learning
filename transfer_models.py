@@ -56,17 +56,17 @@ class TransferModel:
             self.lr = new_lr
         else:
             self.lr /= 10.0
+        self.model = compiled_model(self.model, self.lr)
 
     def set_fine_tune(self, new_lr=None):
         """
         set final layers to trainable and reset learning rate         
         """
-        self.set_lr(new_lr)
         # unfreeze final layers
         for layer in self.model.layers[fine_tune_dict[self.base_model_name]:]:
             layer.trainable = True
-        # recompile model with new learning rate:
-        self.model = compiled_model(self.model, self.lr)
+        # set new lr and recompile model:
+        self.set_lr(new_lr)
 
     def load(self, model_file_path=None, weight_file_path=None):
         # first load model, i.e. load the architecture
