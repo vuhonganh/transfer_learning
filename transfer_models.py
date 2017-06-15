@@ -158,12 +158,12 @@ class TransferModel:
             cur_val_loss = get_string_from_arr("val_loss", self.loss['val'])
             cur_train_acc = get_string_from_arr("train_acc", self.acc['train'])
             cur_vall_acc = get_string_from_arr("val_acc", self.acc['val'])
-            f.write(cur_date_time)
-            f.write(cur_lr)
-            f.write(cur_train_loss)
-            f.write(cur_val_loss)
-            f.write(cur_train_acc)
-            f.write(cur_vall_acc)
+            f.write(cur_date_time + '\n')
+            f.write(cur_lr + '\n')
+            f.write(cur_train_loss + '\n')
+            f.write(cur_val_loss + '\n')
+            f.write(cur_train_acc + '\n')
+            f.write(cur_vall_acc + '\n')
             if self.test_acc > 0.0:
                 f.write("test_acc %f\n" % self.test_acc)
             if self.test2_acc > 0.0:
@@ -210,7 +210,6 @@ def get_string_from_arr(first_word, arr, sep=' '):
     res = first_word
     for a in arr:
         res += sep + str(a)
-    res += '\n'
     return res
 
 
