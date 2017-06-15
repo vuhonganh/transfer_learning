@@ -79,26 +79,21 @@ class TransferModel:
             weight_file_path = self.path_model + "weight.h5"
         self.model.load_weights(weight_file_path)
 
-    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2):
-        earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4,
-                                                          verbose=1, mode='auto')
-
-        lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
-                                                           verbose=1, mode='auto',
-                                                           epsilon=0.0001, cooldown=0, min_lr=1e-6)
+    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2, train_mean=None, train_std=None):
+        if train_mean is not None:
+            x_train -= train_mean
+            x_val -= train_mean
+        if train_std is not None:
+            x_train /= train_std
+            x_val /= train_std
+        callBackList = get_call_backs()
 
         history = self.model.fit(x_train, y_train, batch_size=bs, epochs=epos, verbose=verbose,
-                                 validation_data=(x_val, y_val), callbacks=[lrPlatCallBack, earlyStopCallBack])
+                                 validation_data=(x_val, y_val), callbacks=callBackList)
         self.update_from_history(history, epos)
 
     def fit_aug(self, x_train, y_train, x_val, y_val, bs=96, epos=30, verbose=2):
-        earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4,
-                                                          verbose=1, mode='auto')
-
-        lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
-                                                           verbose=1, mode='auto',
-                                                           epsilon=0.0001, cooldown=0, min_lr=1e-6)
-
+        callBackList = get_call_backs()
         train_gen, val_gen = get_gen(x_train)
         steps_per_ep = len(x_train) / bs
         val_steps = len(x_val) / bs
@@ -107,7 +102,25 @@ class TransferModel:
                                            steps_per_epoch=steps_per_ep, epochs=epos,
                                            validation_data=val_gen.flow(x_val, y_val, batch_size=bs),
                                            validation_steps=val_steps,
-                                           verbose=verbose, callbacks=[lrPlatCallBack, earlyStopCallBack])
+                                           verbose=verbose, callbacks=callBackList)
+        self.update_from_history(history, epos)
+
+    def fit_aug_2(self, x_train, y_train, x_val, y_val, bs=96, epos=30, verbose=2):
+        train_gen, val_gen, train_mean, train_std = get_gen_2(x_train)
+        x_train -= train_mean
+        x_train /= train_std
+        x_val -= train_mean
+        x_val /= train_std
+
+        steps_per_ep = len(x_train) / bs
+        val_steps = len(x_val) / bs
+
+        callBackList = get_call_backs()
+        history = self.model.fit_generator(train_gen.flow(x_train, y_train, batch_size=bs),
+                                           steps_per_epoch=steps_per_ep, epochs=epos,
+                                           validation_data=val_gen.flow(x_val, y_val, batch_size=bs),
+                                           validation_steps=val_steps,
+                                           verbose=verbose, callbacks=callBackList)
         self.update_from_history(history, epos)
 
     def update_from_history(self, history, epos):
@@ -116,7 +129,6 @@ class TransferModel:
         self.loss['val'] += history.history['val_loss']
         self.acc['train'] += history.history['acc']
         self.acc['val'] += history.history['val_acc']
-
 
     def evaluate(self, x_test, y_test):
         predictions = self.model.predict(x_test, batch_size=48, verbose=1)
@@ -351,3 +363,33 @@ def get_gen(x_train):
     train_datagen.fit(x_train)
     return train_datagen, val_datagen
 
+
+def get_gen_2(x_train):
+    train_mean, train_std = get_mean_std(x_train)
+    train_datagen = ImageDataGenerator(
+        width_shift_range=0.01,
+        height_shift_range=0.01,
+        shear_range=0.01,
+        zoom_range=0.01,
+        rotation_range=2,
+        horizontal_flip=True)
+    val_datagen = ImageDataGenerator()
+
+    train_datagen.fit(x_train)
+    return train_datagen, val_datagen, train_mean, train_std
+
+
+def get_mean_std(x_train):
+    train_mean = np.mean(x_train, axis=0, keepdims=True)
+    train_std = np.std(x_train, axis=0, keepdims=True)
+    return train_mean, train_std
+
+
+def get_call_backs():
+    earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4,
+                                                      verbose=1, mode='auto')
+
+    lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
+                                                       verbose=1, mode='auto',
+                                                       epsilon=0.0001, cooldown=0, min_lr=1e-6)
+    return [earlyStopCallBack, lrPlatCallBack]
