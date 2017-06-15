@@ -64,7 +64,6 @@ class TransferModel:
         # unfreeze final layers
         for layer in self.model.layers[fine_tune_dict[self.base_model_name]:]:
             layer.trainable = True
-        self.model.compile()
         # recompile model with new learning rate:
         self.model = compiled_model(self.model, self.lr)
 
