@@ -59,6 +59,7 @@ def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=Fal
     X = []
     y = []
     for i in range(len(classes)):
+        print("done %d/12" % (i+1))
         class_dir = prefix_path + folder_name + '/' + classes[i] + '/'
         im_names = sorted(os.listdir(class_dir))
         for n in im_names:
@@ -211,7 +212,7 @@ if __name__ == "__main__":
     # imshow(x_val[0])
     # print(classes[np.argmax(y_val[0])])
     # show_data(719)
-
     make_data_set("train", augment=True)
+    make_data_set("train", augment=False)
     make_data_set("val")
     make_data_set("test")
