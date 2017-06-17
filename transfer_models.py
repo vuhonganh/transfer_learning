@@ -348,24 +348,26 @@ def get_gen_2(x_train):
 def get_mean_std(x_train):
     train_mean = np.mean(x_train, axis=0, keepdims=True)
     train_std = np.std(x_train, axis=0, keepdims=True)
-    train_mean = train_mean.astype(np.uint8)
-    train_std = train_std.astype(np.uint8)
-    print("train mean =", train_mean)
-    print("train std =", train_std)
+    
+    # have to make them float32 before putting to CNN
+    train_mean = train_mean.astype(np.float32)
+    train_std = train_std.astype(np.float32)
+    #print("train mean =", train_mean)
+    #print("train std =", train_std)
     return train_mean, train_std
 
 
 def get_call_backs():
-    earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=3,
+    earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=5,
                                                       verbose=1, mode='auto')
 
-    lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
+    lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.8, patience=3,
                                                        verbose=1, mode='auto',
                                                        epsilon=0.0001, cooldown=0, min_lr=1e-6)
     return [earlyStopCallBack, lrPlatCallBack]
 
 
-def do_experiment(base_name, hidden_list, augment, load_model=True, lr=1e-4, epo1=10, epo2=20, reg_list=None, prep=False, verbose=2):
+def do_experiment(base_name, hidden_list, augment, load_model=True, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
     m = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
     if load_model:
         m.load()
@@ -375,12 +377,22 @@ def do_experiment(base_name, hidden_list, augment, load_model=True, lr=1e-4, epo
     y_train = keras.utils.to_categorical(y_train, num_classes=12)
     y_val = keras.utils.to_categorical(y_val, num_classes=12)
     y_test = keras.utils.to_categorical(y_test, num_classes=12)
-
+    
+    x_train = x_train.astype(np.float32, copy=False)
+    x_val = x_val.astype(np.float32, copy=False)
+    x_test = x_test.astype(np.float32, copy=False)
+    
+    # IMPORTANT NOTE: for Preprocessing: std does not help, /255 also does not help -> don't know why?
+    
     train_mean, train_std = get_mean_std(x_train)
+    print(np.min(x_train[0]))
+    print(np.min(x_val[0]))
     if prep:
-        x_train = (x_train - train_mean) / train_std
-        x_val = (x_val - train_mean) / train_std
-        x_test = (x_test - train_mean) / train_std
+        x_train = (x_train - train_mean)
+        x_val = (x_val - train_mean)
+        x_test = (x_test - train_mean)
+        print(np.min(x_train[0]))
+        print(np.min(x_val[0]))
     m.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose)
     m.set_fine_tune()
     m.fit(x_train, y_train, x_val, y_val, epos=epo2, verbose=verbose)
