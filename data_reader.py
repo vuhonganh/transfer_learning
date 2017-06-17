@@ -1,20 +1,9 @@
 import numpy as np
 from skimage import transform
-import csv
 from matplotlib import pyplot as plt
 from sklearn.model_selection import StratifiedShuffleSplit
-from sklearn import model_selection
 import os
-
-#model_selection.train_test_split()
-
-# class_file = "class.txt"
-# class_reader = csv.reader(open(class_file))
-# for row in class_reader:
-#     print(row[2])
-
 from scipy.misc import imread, imresize, imsave, imshow
-from scipy import ndimage
 
 nb_train = 720
 nb_val = 180
@@ -63,24 +52,25 @@ def jitter(img):
 def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=False):
     """suppose you have structure: data/train/classes, data/val/classes, data/test/classes"""
     file_name = "%s_aug.npz" % folder_name if augment else "%s.npz" % folder_name
+    if os.path.isfile(file_name):
+        print("file %s already exists" % file_name)
+        return
     print("making %s" % file_name)
     X = []
     y = []
     for i in range(len(classes)):
         class_dir = prefix_path + folder_name + '/' + classes[i] + '/'
         im_names = sorted(os.listdir(class_dir))
-        onehot = np.zeros(len(classes))
-        onehot[i] = 1.0
         for n in im_names:
             img = imread(class_dir + n, mode='RGB')
             img = imresize(img, size)
             if augment:
-                for _ in range(4):
+                for _ in range(2):
                     X.append(jitter(img))
-                    y.append(onehot)
+                    y.append(i)
             X.append(img)
-            y.append(onehot)
-    np.savez(file_name, X=np.asarray(X), y=np.asarray(y))
+            y.append(i)
+    np.savez(file_name, X=np.asarray(X, dtype=np.uint8), y=np.asarray(y, dtype=np.uint8))
 
 
 def load_data(augment=False):
@@ -176,13 +166,6 @@ def get_fc_layers():
     # print(b1.shape)
     # print(w1[0])
 
-
-def get_mean_std(x_train):
-    train_mean = np.mean(x_train, axis=0, keepdims=True)
-    train_std = np.std(x_train, axis=0, keepdims=True)
-    return train_mean, train_std
-
-
 if __name__ == "__main__":
     # # get_fc_layers()
     # # images, labels, train_idx, val_idx, test_idx = get_data("mydata_1200.npz")
@@ -229,5 +212,6 @@ if __name__ == "__main__":
     # print(classes[np.argmax(y_val[0])])
     # show_data(719)
 
-    # make_data_set("train", augment=True)
-    load_data(augment=True)
+    make_data_set("train", augment=True)
+    make_data_set("val")
+    make_data_set("test")

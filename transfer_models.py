@@ -348,11 +348,11 @@ def get_gen_2(x_train):
 def get_mean_std(x_train):
     train_mean = np.mean(x_train, axis=0, keepdims=True)
     train_std = np.std(x_train, axis=0, keepdims=True)
-    return train_mean, train_std
+    return train_mean.astype(np.uint8), train_std.astype(np.uint8)
 
 
 def get_call_backs():
-    earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4,
+    earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=3,
                                                       verbose=1, mode='auto')
 
     lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.8, patience=3,
