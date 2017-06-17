@@ -62,6 +62,8 @@ def jitter(img):
 
 def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=False):
     """suppose you have structure: data/train/classes, data/val/classes, data/test/classes"""
+    file_name = "%s_aug.npz" % folder_name if augment else "%s.npz" % folder_name
+    print("making %s" % file_name)
     X = []
     y = []
     for i in range(len(classes)):
@@ -78,14 +80,20 @@ def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=Fal
                     y.append(onehot)
             X.append(img)
             y.append(onehot)
-    file_name = "%s_aug.npz" % folder_name if augment else "%s.npz" % folder_name
     np.savez(file_name, X=np.asarray(X), y=np.asarray(y))
 
 
 def load_data(augment=False):
-    fnames = ["%s_aug.npz" % d if augment and d == "train" else "%s.npz" % d for d in ("train", "val", "test")]
+    dat_name = ["train", "val", "test"]
+    fnames = []
+    for d in dat_name:
+        fn = "%s_aug.npz" % d if augment and d == "train" else "%s.npz" % d
+        fnames.append(fn)
+        if not os.path.isfile(fn):
+            make_data_set(d, augment=augment)
     res = []
     for n in fnames:
+        print("loading %s" % n)
         buf = np.load(n)
         res.append(buf['X'])
         res.append(buf['y'])
@@ -221,4 +229,5 @@ if __name__ == "__main__":
     # print(classes[np.argmax(y_val[0])])
     # show_data(719)
 
-    make_data_set("train", augment=True)
+    # make_data_set("train", augment=True)
+    load_data(augment=True)

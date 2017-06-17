@@ -9,6 +9,7 @@ import numpy as np
 
 import matplotlib
 from matplotlib.ticker import FuncFormatter
+from data_reader import *
 
 base_model_dict = {"resnet": keras.applications.ResNet50,
                    "inception": keras.applications.InceptionV3,
@@ -365,3 +366,20 @@ def get_call_backs():
                                                        verbose=1, mode='auto',
                                                        epsilon=0.0001, cooldown=0, min_lr=1e-6)
     return [earlyStopCallBack, lrPlatCallBack]
+
+
+def do_experiment(base_name, hidden_list, augment, lr=1e-4, epo1=10, epo2=20, reg_list=None, prep=True):
+    m = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
+    x_train, y_train, x_val, y_val, x_test, y_test = load_data(augment)
+    train_mean, train_std = get_mean_std(x_train)
+    if prep:
+        x_train = (x_train - train_mean) / train_std
+        x_val = (x_val - train_mean) / train_std
+        x_test = (x_test - train_mean) / train_std
+    m.fit(x_train, y_train, x_val, y_val, epos=epo1)
+    m.set_fine_tune()
+    m.fit(x_train, y_train, x_val, y_val, epos=epo2)
+    m.evaluate(x_test, y_test)
+    m.plot()
+    return m
+
