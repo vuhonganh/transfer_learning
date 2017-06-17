@@ -1,9 +1,10 @@
 import numpy as np
+from skimage import util
 from skimage import transform
 from matplotlib import pyplot as plt
 from sklearn.model_selection import StratifiedShuffleSplit
 import os
-from scipy.misc import imread, imresize, imsave, imshow
+from scipy.misc import *
 
 nb_train = 720
 nb_val = 180
@@ -50,6 +51,22 @@ def jitter(img):
     return np.ceil(img).astype(np.uint8)
 
 
+def augment_data(img):
+    """flip horizon and vertical (1->3) and add poisson noise (3 ->6), return a list of 6 images"""
+    # flip
+    f0 = np.flip(img, 0)
+    f1 = np.flip(img, 1)
+    orig = [img, f0, f1]
+    nois = []
+    for im in orig:
+        # noise = util.random_noise(img, mode='gaussian', var=0.001)  gaussian is a bit too noisy
+        noise = util.random_noise(im, mode='poisson')
+        noise *= 255
+        noise = np.ceil(noise).astype(np.uint8)
+        nois.append(noise)
+    return orig + nois
+
+
 def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=False):
     """suppose you have structure: data/train/classes, data/val/classes, data/test/classes"""
     file_name = "%s_aug.npz" % folder_name if augment else "%s.npz" % folder_name
@@ -59,7 +76,10 @@ def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=Fal
     print("making %s" % file_name)
     X = []
     y = []
+    cnt = 1
     for i in range(len(classes)):
+        if augment:
+            os.makedirs('/mnt/data/' + classes[i] + '/', exist_ok=True)
         print("doing %d/12" % (i+1))
         class_dir = prefix_path + folder_name + '/' + classes[i] + '/'
         im_names = sorted(os.listdir(class_dir))
@@ -67,11 +87,16 @@ def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=Fal
             img = imread(class_dir + n, mode='RGB')
             img = imresize(img, size)
             if augment:
-                for _ in range(2):
-                    X.append(jitter(img))
-                    y.append(i)
-            X.append(img)
-            y.append(i)
+                augs = augment_data(img)
+                X += augs
+                label = [i] * len(augs)
+                y += label
+                for im in augs:
+                    imsave('/mnt/data/%s/%5d.JPEG' % (classes[i], cnt), im)
+                    cnt += 1
+            else:
+                X.append(img)
+                y.append(i)
         print("done %d/12" % (i + 1))
     if file_name == "train_aug.npz":
         np.savez("/mnt/data/" + file_name, X=np.asarray(X, dtype=np.uint8), y=np.asarray(y, dtype=np.uint8))
@@ -173,51 +198,5 @@ def get_fc_layers():
     # print(w1[0])
 
 if __name__ == "__main__":
-    # # get_fc_layers()
-    # # images, labels, train_idx, val_idx, test_idx = get_data("mydata_1200.npz")
-    # images, labels, train_idx, val_idx, test_idx = get_data_stratify("mydata_1200.npz")
-    # integer_labels_test = np.argmax(labels[test_idx], axis=1)
-    # integer_labels_train = np.argmax(labels[train_idx], axis=1)
-    # integer_labels_val = np.argmax(labels[val_idx], axis=1)
-    # integer_labels = np.argmax(labels, axis=1)
-    # # plt.hist(integer_labels, bins=12)
-    # # plt.hist(integer_labels_test, bins=12)
-    # plt.hist(integer_labels_train[64:128], bins=12)
-    # plt.hist(integer_labels_train[0:64], bins=12)
-    # plt.hist(integer_labels_train[128:192], bins=12)
-    # # plt.hist(integer_labels_val, bins=12)
-    # plt.show()
-    # img = imread('data/train/apple/00002.JPEG', mode='RGB')
-    # print(img.shape)
-    # imshow(img)
-    # img2 = imresize(img, (224, 224))
-    # imshow(img2)
-    # make_data_set("train")
-    # train = np.load("train.npz")
-    # x_train = train['X']
-    # y_train = train['y']
-    # plt.subplot(121)
-    # plt.imshow(x_train[5])
-    # plt.subplot(122)
-    # aug = jitter(x_train[5])
-    # plt.imshow(aug)
-    # plt.show()
 
-    # img = imread('data/train/apple/00005.JPEG')
-    # img = imresize(img, (224, 224))
-    # plt.subplot(121)
-    # plt.imshow(img)
-    # plt.subplot(122)
-    # plt.imshow(jitter(img))
-    # plt.show()
-    # val = np.load("val.npz")
-    # x_val = val['X']
-    # y_val = val['y']
-
-    # imshow(x_val[0])
-    # print(classes[np.argmax(y_val[0])])
-    # show_data(719)
     make_data_set("train", augment=True)
-    #make_data_set("train", augment=False)
-    #make_data_set("val")
-    #make_data_set("test")
