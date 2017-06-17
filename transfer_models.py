@@ -348,7 +348,11 @@ def get_gen_2(x_train):
 def get_mean_std(x_train):
     train_mean = np.mean(x_train, axis=0, keepdims=True)
     train_std = np.std(x_train, axis=0, keepdims=True)
-    return train_mean.astype(np.uint8), train_std.astype(np.uint8)
+    train_mean = train_mean.astype(np.uint8)
+    train_std = train_std.astype(np.uint8)
+    print("train mean =", train_mean)
+    print("train std =", train_std)
+    return train_mean, train_std
 
 
 def get_call_backs():
