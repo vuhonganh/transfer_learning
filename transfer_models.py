@@ -361,8 +361,11 @@ def get_call_backs():
     return [earlyStopCallBack, lrPlatCallBack]
 
 
-def do_experiment(base_name, hidden_list, augment, lr=1e-4, epo1=10, epo2=20, reg_list=None, prep=True):
+def do_experiment(base_name, hidden_list, augment, load=True, lr=1e-4, epo1=10, epo2=20, reg_list=None, prep=True):
     m = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
+    if load:
+        m.load()
+        m.set_lr(lr)
     x_train, y_train, x_val, y_val, x_test, y_test = load_data(augment)
     train_mean, train_std = get_mean_std(x_train)
     if prep:
