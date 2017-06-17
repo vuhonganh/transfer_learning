@@ -11,6 +11,7 @@ nb_test = 300
 classes = ['apple', 'banana', 'book', 'key', 'keyboard', 'monitor', 'mouse', 'mug', 'orange', 'pear', 'pen', 'wallet']
 
 
+
 def rotate(img, max_degree=20.0):
     return transform.rotate(img, np.random.uniform(-max_degree, max_degree), mode='edge')
 
@@ -72,14 +73,17 @@ def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=Fal
             X.append(img)
             y.append(i)
         print("done %d/12" % (i + 1))
-    np.savez(file_name, X=np.asarray(X, dtype=np.uint8), y=np.asarray(y, dtype=np.uint8))
+    if file_name == "train_aug.npz":
+        np.savez("/mnt/data/" + file_name, X=np.asarray(X, dtype=np.uint8), y=np.asarray(y, dtype=np.uint8))
+    else:
+        np.savez(file_name, X=np.asarray(X, dtype=np.uint8), y=np.asarray(y, dtype=np.uint8))
 
 
 def load_data(augment=False):
     dat_name = ["train", "val", "test"]
     fnames = []
     for d in dat_name:
-        fn = "%s_aug.npz" % d if augment and d == "train" else "%s.npz" % d
+        fn = "/mnt/data/%s_aug.npz" % d if augment and d == "train" else "%s.npz" % d
         fnames.append(fn)
         if not os.path.isfile(fn):
             make_data_set(d, augment=augment)
@@ -214,6 +218,6 @@ if __name__ == "__main__":
     # print(classes[np.argmax(y_val[0])])
     # show_data(719)
     make_data_set("train", augment=True)
-    make_data_set("train", augment=False)
-    make_data_set("val")
-    make_data_set("test")
+    #make_data_set("train", augment=False)
+    #make_data_set("val")
+    #make_data_set("test")
