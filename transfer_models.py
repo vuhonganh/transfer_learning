@@ -34,8 +34,6 @@ class TransferModel:
         self.base_model_name = base_model_name
         # get base model and freeze all layers
         self.base_model = get_base_model(self.base_model_name, input_shape)
-        # number of layers in base model
-        # self.nb_conv_layers = len(self.base_model.layers)
         # get fc model
         self.fc_model = get_fc(hidden_list, self.base_model, num_classes, dropout_list, reg_list, init, verbose)
         self.lr = lr
@@ -70,15 +68,11 @@ class TransferModel:
         # set new lr and recompile model:
         self.set_lr(new_lr)
 
-    def load(self, model_file_path=None, weight_file_path=None):
+    def load(self, model_file_path=None):
         # first load model, i.e. load the architecture
         if model_file_path is None:
             model_file_path = self.path_model + "model.h5"
         self.model = keras.models.load_model(model_file_path)
-        # second load weights
-        if weight_file_path is None:
-            weight_file_path = self.path_model + "weight.h5"
-        self.model.load_weights(weight_file_path)
 
     def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2):
         callBackList = get_call_backs()
@@ -183,7 +177,6 @@ class TransferModel:
             np.save(self.path_model + "histograms", np.asarray(self.histograms))
 
         self.model.save(self.path_model + 'model.h5')
-        self.model.save_weights(self.path_model + 'weight.h5')
         self.plot_loss(savefig=True)
         self.plot_acc(savefig=True)
         self.plot_histograms(savefig=True)
