@@ -367,6 +367,32 @@ def get_call_backs():
     return [earlyStopCallBack, lrPlatCallBack]
 
 
+def exp_2(base_name, hidden_list, augment, use_noise, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
+    if model is None:
+        model = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
+    x_train, y_train, x_val, y_val, x_test, y_test = get_data_arr()
+    if augment:
+        x_train, y_train = get_train_augment(x_train, y_train, use_noise)
+
+    # cast to float32
+    x_train = x_train.astype(np.float32, copy=False)
+    x_val = x_val.astype(np.float32, copy=False)
+    x_test = x_test.astype(np.float32, copy=False)
+
+    if prep:
+        train_mean, train_std = get_mean_std(x_train)
+        x_train -= train_mean
+        x_val -= train_mean
+        x_test -= train_mean
+
+    model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose)
+    model.set_fine_tune()
+    model.fit(x_train, y_train, x_val, y_val, epos=epo2, verbose=verbose)
+    model.evaluate(x_test, y_test)
+    model.plot()
+    return model
+
+
 def do_experiment(base_name, hidden_list, augment, load_model=True, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
     m = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
     if load_model:

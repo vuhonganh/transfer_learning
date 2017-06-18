@@ -51,20 +51,32 @@ def jitter(img):
     return np.ceil(img).astype(np.uint8)
 
 
-def augment_data(img):
+def get_train_augment(x_train, y_train, noise=False):
+    x_train_aug = []
+    y_train_aug = []
+    for i in range(x_train.shape[0]):
+        cur_aug = augment_data(x_train[i], noise)
+        x_train_aug += cur_aug
+        y_train_aug += [y_train[i]] * len(cur_aug)
+    return np.asarray(x_train_aug), np.asarray(y_train_aug)
+
+
+def augment_data(img, noise=False):
     """flip horizon and vertical (1->3) and add poisson noise (3 ->6), return a list of 6 images"""
     # flip
     f0 = np.flip(img, 0)
     f1 = np.flip(img, 1)
-    orig = [img, f0, f1]
+    res = [img, f0, f1]
     nois = []
-    for im in orig:
-        # noise = util.random_noise(img, mode='gaussian', var=0.001)  gaussian is a bit too noisy
-        noise = util.random_noise(im, mode='poisson')
-        noise *= 255
-        noise = np.ceil(noise).astype(np.uint8)
-        nois.append(noise)
-    return orig + nois
+    if noise:
+        for im in res:
+            # noise = util.random_noise(img, mode='gaussian', var=0.001)  gaussian is a bit too noisy
+            im_noise = util.random_noise(im, mode='poisson')
+            im_noise *= 255
+            im_noise = np.ceil(im_noise ).astype(np.uint8)
+            nois.append(im_noise)
+        res += nois
+    return res
 
 
 def make_data_set(folder_name, prefix_path="data/", size=(224, 224), augment=False):
