@@ -301,12 +301,16 @@ def to_percent(y, position):
         return s + '%'
 
 
-def compare_models(list_models):
+def compare_models(list_models, list_names=None):
     plt.clf()
     max_test_acc = 0.0
     max_test_model_name = ''
-    for m in list_models:
-        plt.plot(m.acc['val'], label=m.model_name)
+    for i in range(len(list_models)):
+        m = list_models[i]
+        if list_names is not None:
+            plt.plot(m.acc['val'], label=list_names[i])
+        else:
+            plt.plot(m.acc['val'], label=m.model_name)
         if m.test_acc > max_test_acc:
             max_test_model_name = m.model_name
             max_test_acc = m.test_acc
