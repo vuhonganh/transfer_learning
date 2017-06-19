@@ -160,6 +160,7 @@ class TransferModel:
     def save(self, path=None):
         if path is None:
             path = self.path_model
+        os.makedirs(path, exist_ok=True)
         with open(path + "params.txt", mode='w') as f:
             cur_date_time = strftime("date %Y_%m_%d_%H_%M_%S\n", gmtime())
             cur_lr = "lr %f\n" % self.lr
