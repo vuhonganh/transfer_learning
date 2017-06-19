@@ -157,8 +157,10 @@ class TransferModel:
         else:
             plt.show(block=False)
 
-    def save(self):
-        with open(self.path_model + "params.txt", mode='w') as f:
+    def save(self, path=None):
+        if path is None:
+            path = self.path_model
+        with open(path + "params.txt", mode='w') as f:
             cur_date_time = strftime("date %Y_%m_%d_%H_%M_%S\n", gmtime())
             cur_lr = "lr %f\n" % self.lr
             cur_train_loss = get_string_from_arr("train_loss", self.loss['train'])
