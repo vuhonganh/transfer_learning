@@ -104,8 +104,9 @@ class TransferModel:
         #                   "banana", "key", "mug", "pear", "orange"]
         cnt = 0
         cnt_top_2 = 0
-        nb_bin = 10
-        hist_range = 1.0 / nb_bin
+        # case prob = 1.0 will belong to 11-th bin: 1.0 <= prob < 1.1
+        nb_bin = 11
+        hist_range = 1.0 / (nb_bin - 1)
         histo = []
 
         for i in range(predictions.shape[0]):
@@ -366,14 +367,19 @@ def get_mean_std(x_train):
     return train_mean, train_std
 
 
-def get_call_backs():
-    earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=5,
-                                                      verbose=1, mode='auto')
+def get_call_backs(use_early_stop=True, use_lr_reduce=True):
+    cb_list = []
+    if use_early_stop:
+        earlyStopCallBack = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=5,
+                                                          verbose=1, mode='auto')
+        cb_list.append(earlyStopCallBack)
 
-    lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.8, patience=3,
-                                                       verbose=1, mode='auto',
-                                                       epsilon=0.0001, cooldown=0, min_lr=1e-6)
-    return [earlyStopCallBack, lrPlatCallBack]
+    if use_lr_reduce:
+        lrPlatCallBack = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.8, patience=5,
+                                                           verbose=1, mode='auto',
+                                                           epsilon=0.0001, cooldown=0, min_lr=5e-6)
+        cb_list.append(lrPlatCallBack)
+    return cb_list
 
 
 def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
