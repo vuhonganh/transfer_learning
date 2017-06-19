@@ -312,11 +312,14 @@ def compare_models(list_models, list_names=None):
         else:
             plt.plot(m.acc['val'], label=m.model_name)
         if m.test_acc > max_test_acc:
-            max_test_model_name = m.model_name
+            if list_names is not None:
+                max_test_model_name = list_names[i]
+            else:
+                max_test_model_name = m.model_name
             max_test_acc = m.test_acc
     plt.legend()
     plt.xlabel('epoch')
-    plt.ylabel('val accuracy')
+    plt.ylabel('validation accuracy')
     plt.show(block=False)
     print("best model %s with test accuracy %f" % (max_test_model_name, max_test_acc))
 
