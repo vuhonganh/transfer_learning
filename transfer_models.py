@@ -74,8 +74,8 @@ class TransferModel:
             model_file_path = self.path_model + "model.h5"
         self.model = keras.models.load_model(model_file_path)
 
-    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2):
-        callBackList = get_call_backs()
+    def fit(self, x_train, y_train, x_val, y_val, bs=96, epos=25, verbose=2, use_early_stop=True, use_lr_reduce=True):
+        callBackList = get_call_backs(use_early_stop, use_lr_reduce)
         history = self.model.fit(x_train, y_train, batch_size=bs, epochs=epos, verbose=verbose,
                                  validation_data=(x_val, y_val), callbacks=callBackList)
         self.update_from_history(history, epos)
@@ -384,9 +384,13 @@ def get_call_backs(use_early_stop=True, use_lr_reduce=True):
     return cb_list
 
 
-def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
+def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None,
+          prep=False, verbose=2, use_early_stop=True, use_lr_reduce=True, fine_tune=True, dropout_list=None):
+    # load model
     if model is None:
-        model = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
+        model = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list, dropout_list=dropout_list)
+
+    # get data
     x_train, y_train, x_val, y_val, x_test, y_test = get_data_arr()
     if augment:
         x_train, y_train = get_train_augment(x_train, y_train, use_noise)
@@ -396,15 +400,22 @@ def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4
     x_val = x_val.astype(np.float32, copy=False)
     x_test = x_test.astype(np.float32, copy=False)
 
+    # prepossessing
     if prep:
         train_mean, train_std = get_mean_std(x_train)
         x_train -= train_mean
         x_val -= train_mean
         x_test -= train_mean
 
-    model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose, bs=bs)
-    model.set_fine_tune()
-    model.fit(x_train, y_train, x_val, y_val, epos=epo2, verbose=verbose, bs=bs)
+    if epo1 > 0:
+        model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose, bs=bs,
+                  use_early_stop=use_early_stop, use_lr_reduce=use_lr_reduce)
+    if fine_tune:
+        model.set_fine_tune()
+    if epo2 > 0:
+        model.fit(x_train, y_train, x_val, y_val, epos=epo2, verbose=verbose, bs=bs,
+                  use_early_stop=use_early_stop, use_lr_reduce=use_lr_reduce)
+
     model.evaluate(x_test, y_test)
     model.plot()
     return model
