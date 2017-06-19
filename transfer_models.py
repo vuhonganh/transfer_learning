@@ -376,7 +376,7 @@ def get_call_backs():
     return [earlyStopCallBack, lrPlatCallBack]
 
 
-def exp_2(base_name, hidden_list, augment, use_noise, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
+def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None, prep=False, verbose=2):
     if model is None:
         model = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list)
     x_train, y_train, x_val, y_val, x_test, y_test = get_data_arr()
@@ -394,9 +394,9 @@ def exp_2(base_name, hidden_list, augment, use_noise, model=None, lr=1e-4, epo1=
         x_val -= train_mean
         x_test -= train_mean
 
-    model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose)
+    model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose, bs=bs)
     model.set_fine_tune()
-    model.fit(x_train, y_train, x_val, y_val, epos=epo2, verbose=verbose)
+    model.fit(x_train, y_train, x_val, y_val, epos=epo2, verbose=verbose, bs=bs)
     model.evaluate(x_test, y_test)
     model.plot()
     return model
