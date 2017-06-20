@@ -27,7 +27,7 @@ classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboar
 
 
 class TransferModel:
-    def __init__(self, base_model_name, hidden_list, lr=1e-4, num_classes=12, dropout_list=None,
+    def __init__(self, base_model_name, hidden_list,lr=1e-4, num_classes=12, dropout_list=None,
                  reg_list=None, init='he_normal', verbose=True, input_shape=(224, 224, 3)):
 
         if base_model_name not in base_model_dict:
@@ -143,6 +143,7 @@ class TransferModel:
         self.histograms_epochs.append(self.cur_epoch)
         print("top 1 accuracy = %f" % acc)
         print("top %d accuracy = %f" % (top, acc_top))
+        return test_fail
 
     def plot_acc(self, baseline=0.9, savefig=False):
         # clear plot first
