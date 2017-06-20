@@ -22,6 +22,9 @@ fine_tune_dict = {"resnet": 142,
                   "inception": 249,
                   "xception": 117}
 
+classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
+                  "banana", "key", "mug", "pear", "orange"]
+
 
 class TransferModel:
     def __init__(self, base_model_name, hidden_list, lr=1e-4, num_classes=12, dropout_list=None,
@@ -46,7 +49,7 @@ class TransferModel:
         self.histograms = []
         self.histograms_epochs = []
         self.test_acc = 0.0
-        self.test2_acc = 0.0
+        self.testtop_acc = 0.0
         self.cur_epoch = 0
         self.model_name = get_string_from_arr(self.base_model_name, hidden_list, sep='_')
 
@@ -97,36 +100,49 @@ class TransferModel:
         self.acc['train'] += history.history['acc']
         self.acc['val'] += history.history['val_acc']
 
-    def evaluate(self, x_test, y_test):
+    def evaluate(self, x_test, y_test, top=2, classes=classes_reader):
         predictions = self.model.predict(x_test, batch_size=48, verbose=1)
         integer_label = np.argmax(y_test, axis=1)
-        # classes_reader = ["apple", "pen", "book", "monitor", "mouse", "wallet", "keyboard",
-        #                   "banana", "key", "mug", "pear", "orange"]
+
         cnt = 0
-        cnt_top_2 = 0
+        cnt_top = 0
         # case prob = 1.0 will belong to 11-th bin: 1.0 <= prob < 1.1
         nb_bin = 11
         hist_range = 1.0 / (nb_bin - 1)
         histo = []
-
+        test_fail = []  # wrong cases
+        assignments = np.zeros((y_test.shape[1], y_test.shape[1]))
+        f = open(self.path_model + "wrong_prediction.txt", mode='w')
+        f.write("predict,truth,prob\n")
         for i in range(predictions.shape[0]):
-            preds = np.argsort(predictions[i])[::-1][0:2]
+            preds = np.argsort(predictions[i])[::-1][0:top]
             for p in preds:
                 if p == integer_label[i]:
-                    cnt_top_2 += 1
+                    cnt_top += 1
                 for k in range(nb_bin):
                     if k * hist_range <= predictions[i][p] < (k+1) * hist_range:
                         histo.append((k + 0.5) * hist_range)
             if preds[0] == integer_label[i]:
                 cnt += 1
+            else:
+                test_fail.append(i)
+                f.write("%s,%s,%f\n" % (classes[preds[0]], classes[integer_label[i]], predictions[i, preds[0]]))
+            assignments[integer_label[i], preds[0]] += 1
+
+        f.close()
+        # print assignment tables
+        assignments /= np.sum(assignments, axis=1)
+        print_assignments(assignments, classes)
+
+        # print top accuracies
         acc = cnt / predictions.shape[0]
-        acc_2 = cnt_top_2 / predictions.shape[0]
+        acc_top = cnt_top / predictions.shape[0]
         self.test_acc = acc
-        self.test2_acc = acc_2
+        self.testtop_acc = acc_top
         self.histograms.append(histo)
         self.histograms_epochs.append(self.cur_epoch)
         print("top 1 accuracy = %f" % acc)
-        print("top 2 accuracy = %f" % acc_2)
+        print("top %d accuracy = %f" % (top, acc_top))
 
     def plot_acc(self, baseline=0.9, savefig=False):
         # clear plot first
@@ -176,8 +192,8 @@ class TransferModel:
             f.write(cur_vall_acc + '\n')
             if self.test_acc > 0.0:
                 f.write("test_acc %f\n" % self.test_acc)
-            if self.test2_acc > 0.0:
-                f.write("test_2acc %f\n" % self.test2_acc)
+            if self.testtop_acc > 0.0:
+                f.write("test_topacc %f\n" % self.testtop_acc)
             np.save(self.path_model + "histograms", np.asarray(self.histograms))
 
         self.model.save(self.path_model + 'model.h5')
@@ -454,4 +470,18 @@ def do_experiment(base_name, hidden_list, augment, load_model=True, lr=1e-4, epo
     m.evaluate(x_test, y_test)
     m.plot()
     return m
+
+
+def print_assignments(assignments, classes):
+    firstline = "%10s" % "class"
+    for c in classes:
+        firstline += "%10s" % c
+
+    print(firstline)
+
+    for i in range(len(classes)):
+        next_line = "%10s" % classes[i]
+        for p in assignments[i]:
+            next_line += "%10.2f" % p
+        print(next_line)
 
