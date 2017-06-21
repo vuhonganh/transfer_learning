@@ -34,7 +34,7 @@ if __name__ == "__main__":
     model = keras.models.load_model('resnet_512/model.h5')
     s = socket.socket()         # Create a socket object
     host = socket.gethostname() # Get local machine name
-    port = 12347                # Reserve a port for your service.
+    port = 12348                # Reserve a port for your service.
     s.bind((host, port))        # Bind to the port
 
     s.listen(5)                 # Now wait for client connection.
@@ -48,6 +48,7 @@ if __name__ == "__main__":
     while True:
         # data = conn.recv(1024).decode()
         # data = conn.recv(1024)
+        # receive until the end
         data = recv_end(conn)
         if data == EXIT:
             break
@@ -63,8 +64,18 @@ if __name__ == "__main__":
             img = data.reshape(224, 224, 3)
             # img = imresize(data, (224, 224))
             x = np.asarray([img])
-            res = classes_reader[np.argmax(model.predict(x, batch_size=1))]
-            # res = 'asdf'
+            res = ''
+
+            predictions = model.predict(x, batch_size=1)[0]  # note that predictions is a 2D array
+
+            idx_max = np.argsort(predictions)
+            top3 = idx_max[-1:-4:-1]
+            for idx in top3:
+                print(idx)
+                print(classes_reader[idx])
+                print(predictions[idx])
+                res += '%s:%.2f,' % (classes_reader[idx], predictions[idx])
+
             # imshow(data)
             # time.sleep(2)
             conn.sendall(res.encode())
