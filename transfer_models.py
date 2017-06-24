@@ -403,7 +403,7 @@ def get_call_backs(use_early_stop=True, use_lr_reduce=True):
 
 
 def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4, epo1=20, epo2=20, reg_list=None,
-          prep=False, verbose=2, use_early_stop=True, use_lr_reduce=True, fine_tune=True, dropout_list=None):
+          prep=False, normalized=False, verbose=2, use_early_stop=True, use_lr_reduce=True, fine_tune=True, dropout_list=None):
     # load model
     if model is None:
         model = TransferModel(base_name, hidden_list, lr=lr, reg_list=reg_list, dropout_list=dropout_list)
@@ -424,6 +424,10 @@ def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4
         x_train -= train_mean
         x_val -= train_mean
         x_test -= train_mean
+        if normalized:
+            x_train /= 255.0
+            x_val /= 255.0
+            x_test /= 255.0
 
     if epo1 > 0:
         model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose, bs=bs,
