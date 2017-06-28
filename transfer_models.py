@@ -425,9 +425,12 @@ def exp_2(base_name, hidden_list, augment, use_noise, bs=48, model=None, lr=1e-4
         x_val -= train_mean
         x_test -= train_mean
         if normalized:
-            x_train /= 255.0
-            x_val /= 255.0
-            x_test /= 255.0
+            # x_train /= 255.0
+            x_train /= train_std
+            # x_val /= 255.0
+            x_val /= train_std
+            # x_test /= 255.0
+            x_test /= train_std
 
     if epo1 > 0:
         model.fit(x_train, y_train, x_val, y_val, epos=epo1, verbose=verbose, bs=bs,
